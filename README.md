@@ -52,7 +52,7 @@ cover-letter-generator/
 ├── profile_store.py         # Chroma vector store for candidate background
 ├── letter_generator.py      # Final letter generation
 ├── data/
-│   └── profile.csv          # Your background (not committed — see .gitignore)
+│   └── profile.csv          # my backround
 ├── .env.example
 ├── requirements.txt
 └── README.md
