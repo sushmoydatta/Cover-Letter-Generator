@@ -14,18 +14,36 @@ Paste a job posting and your resume, and get everything you need to apply. Every
 
 ## Use it in the browser
 
-The web app is a single static page (`web/app.html`) with no backend. Your resume, API key and tracker stay in your browser's local storage.
+**Visitors need no API key and no sign-up.** The web app (`web/app.html`) calls a small backend, the Job Apply Helper API (`worker/`). The API is a Cloudflare Worker that holds the Groq key as a secret. Resumes, drafts and the tracker stay in the visitor's browser and are never stored on a server.
 
-- **On GitHub Pages:** visitors pick a provider in *AI settings* and paste their own key. [Groq](https://console.groq.com/keys) has a free tier. OpenAI, OpenRouter and any OpenAI-compatible endpoint also work.
-- **On claude.ai (as a shared Artifact):** the page uses the visitor's own Claude account, so no key is needed. A visitor has to be signed in to Claude.
+- **On GitHub Pages:** the page calls the API, and the API calls Groq with the owner's key.
+- **On claude.ai (as a shared Artifact):** the page uses the visitor's own Claude account instead.
 
-### Deploying to GitHub Pages
+### How the API is protected
 
-1. Merge this branch into `main`.
-2. Go to **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**.
-3. The `Deploy web app to GitHub Pages` workflow runs on every push to `main`. The site is published at `https://<user>.github.io/Cover-Letter-Generator/`.
+- Prompts are built **on the server** from `jobhelper/prompts.json`. The API only runs the app's six tasks, so it can't be used as a free general-purpose LLM endpoint.
+- Only origins listed in `ALLOWED_ORIGINS` can call it (`worker/wrangler.toml`).
+- Each IP address gets 6 requests per minute (Cloudflare rate limiting), and inputs are capped at 15,000 characters.
+- If the main model is rate-limited, the API falls back to a smaller model.
 
-To host it somewhere else (Netlify, Vercel, Cloudflare Pages), run `python scripts/build_web.py` and upload the `dist/` folder.
+### One-time setup (owner only)
+
+1. Create a free Cloudflare account. Copy your **Account ID** from the dashboard sidebar.
+2. Create an API token: **My Profile → API Tokens → Create Token → "Edit Cloudflare Workers" template**.
+3. In this repo, go to **Settings → Secrets and variables → Actions → New repository secret** and add:
+   - `CLOUDFLARE_API_TOKEN`
+   - `CLOUDFLARE_ACCOUNT_ID`
+   - `GROQ_API_KEY` (from https://console.groq.com/keys)
+4. Run **Actions → Deploy API (Cloudflare Worker) → Run workflow**. The run summary shows the API URL, for example `https://job-apply-helper.<you>.workers.dev`.
+5. Under **Variables**, add `API_URL` set to that URL. Then re-run **Deploy web app to GitHub Pages**.
+
+The API is redeployed automatically whenever `worker/` or the prompts change on `main`.
+
+**Free-tier limits:** Groq's free tier allows roughly 30 requests a minute and a few thousand a day across all visitors. If the app becomes popular, upgrade to Groq's paid developer tier. It costs cents per thousand drafts.
+
+### Deploying the page
+
+GitHub Pages deploys from `main` (**Settings → Pages → Source: GitHub Actions**). To host it somewhere else, run `API_URL=https://your-worker.workers.dev python scripts/build_web.py` and upload `dist/`.
 
 ## Use it from the command line
 
@@ -59,7 +77,8 @@ jobhelper/
   sources.py     # job page fetching and resume loading (PDF/TXT/MD/CSV)
   config.py      # provider settings from env / .env
   cli.py         # `jobhelper` command
-web/app.html     # the web app (prompts are injected at build time)
+web/app.html     # the web app (prompts and API URL are injected at build time)
+worker/          # Cloudflare Worker API that keeps the Groq key server-side
 scripts/build_web.py
 tests/           # pytest suite (no network; the LLM is mocked)
 notebooks/exploration.ipynb   # original prototype
@@ -78,6 +97,7 @@ notebooks/exploration.ipynb   # original prototype
 ```bash
 pip install -e ".[dev]"
 pytest -q
+node --test worker/test/worker.test.mjs
 python scripts/build_web.py && python -m http.server -d dist 8000
 ```
 

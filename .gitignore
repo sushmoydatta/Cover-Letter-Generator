@@ -13,3 +13,6 @@ data/*
 !data/resume.example.md
 .ipynb_checkpoints/
 dist/
+node_modules/
+.wrangler/
+.dev.vars

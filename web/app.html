@@ -167,10 +167,6 @@ label.field{display:flex;flex-direction:column;gap:6px;font-size:.84rem;font-wei
 .proof mark{background:var(--hl);color:inherit;padding:0 2px;border-radius:3px}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin:0 0 8px}
 
-details.settings{border-top:1px dashed var(--line);padding-top:14px}
-details.settings summary{cursor:pointer;font-weight:600;font-size:.9rem;color:var(--muted)}
-details.settings summary:hover{color:var(--fg)}
-.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:12px}
 
 /* tracker */
 .ledger{overflow-x:auto;min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
@@ -276,24 +272,6 @@ footer nav{display:flex;gap:18px} footer a{color:var(--muted)} footer a:hover{co
           <div class="status" id="status" role="status" aria-live="polite"></div>
           <div class="out" id="out"></div>
 
-          <details class="settings" id="settingsBox">
-            <summary>AI settings</summary>
-            <p class="hint" id="settingsNote" style="margin-top:10px"></p>
-            <div class="settings-grid" id="keyFields">
-              <label class="field">Provider
-                <select id="provider">
-                  <option value="groq">Groq (free tier)</option>
-                  <option value="openai">OpenAI</option>
-                  <option value="openrouter">OpenRouter</option>
-                  <option value="custom">Custom (OpenAI-compatible)</option>
-                </select>
-              </label>
-              <label class="field">API key <input type="password" id="apiKey" autocomplete="off" placeholder="gsk_…"></label>
-              <label class="field">Model <input type="text" id="model"></label>
-              <label class="field" id="baseUrlField" hidden>Base URL <input type="url" id="baseUrl" placeholder="https://host/v1"></label>
-            </div>
-            <label class="row hint" style="margin-top:12px" id="rememberRow"><input type="checkbox" id="rememberKey"> Remember the key in this browser</label>
-          </details>
         </div>
       </div>
     </div>
@@ -386,59 +364,36 @@ const store = {
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-/* ---------- AI engine ---------- */
-const PROVIDERS = {
-  groq:{url:"https://api.groq.com/openai/v1", model:"llama-3.3-70b-versatile", ph:"gsk_…", keyUrl:"https://console.groq.com/keys"},
-  openai:{url:"https://api.openai.com/v1", model:"gpt-4o-mini", ph:"sk-…", keyUrl:"https://platform.openai.com/api-keys"},
-  openrouter:{url:"https://openrouter.ai/api/v1", model:"meta-llama/llama-3.3-70b-instruct", ph:"sk-or-…", keyUrl:"https://openrouter.ai/keys"},
-  custom:{url:"", model:"", ph:"key (optional)"}
-};
+/* ---------- AI engine ----------
+   On claude.ai the page uses the visitor's own Claude account.
+   Everywhere else it calls the Job Apply Helper API (a Cloudflare Worker that holds the key),
+   so visitors never need an API key. */
+const API_URL = /*API_URL*/"";
 let claudeSample = null;
-let sessionKey = "";
+let apiOk = null;   // null = checking, true/false after the health check
 
-function cfg(){
-  const p = $("provider").value;
-  return {provider:p, key:$("apiKey").value.trim(), model:$("model").value.trim() || PROVIDERS[p].model,
-          url:(p==="custom" ? $("baseUrl").value.trim() : PROVIDERS[p].url).replace(/\/$/,"")};
-}
-function engineReady(){ if(claudeSample) return true; const c = cfg(); return !!c.url && (!!c.key || c.provider==="custom"); }
+function engineReady(){ return !!claudeSample || apiOk === true; }
 
 function renderEngine(){
   const dot = $("engineDot"), txt = $("engineText");
   if(claudeSample){
-    dot.className="dot on"; txt.textContent="Using your Claude account";
-    $("settingsNote").textContent="Running on claude.ai: requests use your own Claude plan, so no API key is needed.";
-    $("keyFields").hidden = true; $("rememberRow").hidden = true; $("settingsBox").open = false;
+    dot.className = "dot on"; txt.textContent = "Ready · using your Claude account";
     $("urlRow").hidden = true; $("urlHint").textContent = "Copy the full job posting from the careers page and paste it below.";
-    return;
-  }
-  $("keyFields").hidden = false; $("rememberRow").hidden = false;
-  const p = PROVIDERS[$("provider").value];
-  const link = p.keyUrl ? ` Get a free key at <a href="${p.keyUrl}" target="_blank" rel="noopener">${new URL(p.keyUrl).host}</a>.` : "";
-  $("settingsNote").innerHTML = "Your key stays in your browser and is sent only to the provider you pick." + link;
-  if(engineReady()){ dot.className="dot on"; txt.textContent = `${$("provider").selectedOptions[0].textContent.replace(/ \(.*\)/,"")} · ${cfg().model}`; }
-  else { dot.className="dot off"; txt.textContent="Add an API key in AI settings"; }
+  } else if(apiOk === true){ dot.className = "dot on"; txt.textContent = "Ready · free to use"; }
+  else if(apiOk === false){ dot.className = "dot off"; txt.textContent = "AI service offline"; }
+  else { dot.className = "dot"; txt.textContent = "Connecting…"; }
 }
 
-async function callLLM(system, user, {onText, signal} = {}){
-  if(claudeSample){
-    const res = await claudeSample(`${system}\n\n${user}`, {onText: ({text}) => onText && onText(text), signal, modelTier:"default", cache:false});
-    return res.text;
-  }
-  const c = cfg();
-  if(!engineReady()) throw new Error("Add an API key in AI settings below (Groq has a free tier).");
-  const headers = {"Content-Type":"application/json"};
-  if(c.key) headers.Authorization = "Bearer " + c.key;
-  const resp = await fetch(c.url + "/chat/completions", {method:"POST", headers, signal,
-    body: JSON.stringify({model:c.model, temperature:0.4, stream:true,
-      messages:[{role:"system",content:system},{role:"user",content:user}]})});
-  if(!resp.ok){
-    let msg = await resp.text().catch(()=> "");
-    try{ msg = JSON.parse(msg).error.message; }catch{}
-    if(resp.status===401) msg = "The API key was rejected. Check it in AI settings.";
-    if(resp.status===429) msg = "Rate limit reached. Wait a minute and try again. " + msg;
-    throw new Error(msg || `Request failed (${resp.status})`);
-  }
+async function checkApi(){
+  if(claudeSample || !API_URL){ if(!API_URL && !claudeSample) apiOk = false; renderEngine(); return; }
+  try{
+    const r = await fetch(API_URL + "/health", {cache:"no-store"});
+    apiOk = r.ok && (await r.json()).configured === true;
+  }catch{ apiOk = false; }
+  renderEngine();
+}
+
+async function readSSE(resp, onText){
   const reader = resp.body.getReader(), dec = new TextDecoder();
   let buf = "", text = "";
   for(;;){
@@ -447,11 +402,33 @@ async function callLLM(system, user, {onText, signal} = {}){
     const lines = buf.split("\n"); buf = lines.pop();
     for(const line of lines){
       const l = line.trim(); if(!l.startsWith("data:")) continue;
-      const data = l.slice(5).trim(); if(data==="[DONE]") continue;
+      const data = l.slice(5).trim(); if(data === "[DONE]") continue;
       try{ const d = JSON.parse(data).choices?.[0]?.delta?.content; if(d){ text += d; onText && onText(text); } }catch{}
     }
   }
   return text.trim();
+}
+
+/* req = {task, resume, job, style?, contact?, question?} */
+async function callAI(req, {onText, signal} = {}){
+  if(claudeSample){
+    const t = PROMPTS.tasks[req.task];
+    let extra = "";
+    if(req.task === "letter") extra = PROMPTS.letter_styles[req.style] || PROMPTS.letter_styles.professional;
+    if(req.task === "outreach" && req.contact) extra = `The recipient is: ${req.contact}.`;
+    if(req.task === "answer") extra = req.question;
+    const user = t.prompt.replaceAll("{extra}", extra).replaceAll("{resume}", req.resume).replaceAll("{job}", req.job);
+    const res = await claudeSample(`${PROMPTS.system}\n\n${user}`, {onText: ({text}) => onText && onText(text), signal, modelTier:"default", cache:false});
+    return res.text;
+  }
+  if(!API_URL) throw new Error("The AI service isn't connected yet. Please check back soon.");
+  const resp = await fetch(API_URL + "/generate", {method:"POST", signal, headers:{"Content-Type":"application/json"}, body: JSON.stringify(req)});
+  if(!resp.ok){
+    let msg = ""; try{ msg = (await resp.json()).error; }catch{}
+    throw new Error(msg || `The AI service returned an error (${resp.status}). Please try again.`);
+  }
+  apiOk = true; renderEngine();
+  return readSSE(resp, onText);
 }
 
 function parseJSON(text){
@@ -567,24 +544,22 @@ async function generate(){
   const resume = $("resume").value.trim(), job = $("job").value.trim();
   if(resume.length < 80) return setStatus("Add your resume first (paste it or upload a PDF).", true);
   if(job.length < 80) return setStatus("Add the job posting text first.", true);
-  if(!engineReady()){ $("settingsBox").open = true; renderEngine(); return setStatus("Add an API key in AI settings below. Groq has a free tier.", true); }
   const task = PROMPTS.tasks[active];
-  let extra = "";
-  if(active === "letter") extra = PROMPTS.letter_styles[$("optStyle").value];
-  if(active === "outreach"){ const c = $("optContact").value.trim(); extra = c ? `The recipient is: ${c}.` : ""; }
-  if(active === "answer"){ extra = $("optQuestion").value.trim(); if(!extra) return setStatus("Type the application question first.", true); }
-  const user = task.prompt.replaceAll("{extra}", extra).replaceAll("{resume}", resume.slice(0, 15000)).replaceAll("{job}", job.slice(0, 15000));
+  const req = {task: active, resume: resume.slice(0, 15000), job: job.slice(0, 15000)};
+  if(active === "letter") req.style = $("optStyle").value;
+  if(active === "outreach") req.contact = $("optContact").value.trim();
+  if(active === "answer"){ req.question = $("optQuestion").value.trim(); if(!req.question) return setStatus("Type the application question first.", true); }
   const toolId = active;
   results._userRan = true;
   controller = new AbortController();
   $("goBtn").disabled = true; $("stopBtn").hidden = false;
-  setStatus(claudeSample ? "Asking Claude…" : "Generating…");
+  setStatus("Writing your draft…");
   const out = $("out");
   if(task.json) out.innerHTML = `<p class="hint">Analysing the match…</p>`;
   else { out.classList.toggle("plain", toolId==="letter"||toolId==="answer"); out.textContent = ""; }
   const plain = toolId === "letter" || toolId === "answer";
   try{
-    const text = await callLLM(PROMPTS.system, user, {signal: controller.signal, onText: t => {
+    const text = await callAI(req, {signal: controller.signal, onText: t => {
       if(task.json || active !== toolId) return;
       if(plain) out.textContent = t; else out.innerHTML = md(t);
     }});
@@ -604,7 +579,7 @@ function friendly(e){
     rate_limited:"You've hit a usage limit. Wait a bit and try again.", prompt_too_large:"The resume or posting is too long. Trim it and retry.",
     refused:"Claude declined this request. Try rewording the inputs.", session_expired:"Your session expired. Reload the page and sign in."};
   if(e && e.code && map[e.code]) return map[e.code];
-  if(e instanceof TypeError && /fetch/i.test(e.message)) return "Couldn't reach the AI provider. Check your connection or provider settings.";
+  if(e instanceof TypeError && /fetch/i.test(e.message)) return "Couldn't reach the AI service. Check your internet connection and try again.";
   return (e && e.message) || "Something went wrong. Try again.";
 }
 $("goBtn").addEventListener("click", generate);
@@ -687,27 +662,6 @@ $("fetchBtn").addEventListener("click", async () => {
   finally{ $("fetchBtn").disabled = false; }
 });
 
-/* ---------- settings ---------- */
-(function initSettings(){
-  const s = store.get("settings", {provider:"groq", model:"", baseUrl:""});
-  $("provider").value = PROVIDERS[s.provider] ? s.provider : "groq";
-  $("model").value = s.model || ""; $("baseUrl").value = s.baseUrl || "";
-  const savedKey = store.get("key", "");
-  $("apiKey").value = savedKey; $("rememberKey").checked = !!savedKey;
-  const sync = () => {
-    const p = $("provider").value;
-    $("model").placeholder = PROVIDERS[p].model || "model name"; $("apiKey").placeholder = PROVIDERS[p].ph;
-    $("baseUrlField").hidden = p !== "custom";
-    store.set("settings", {provider:p, model:$("model").value.trim(), baseUrl:$("baseUrl").value.trim()});
-    if($("rememberKey").checked) store.set("key", $("apiKey").value.trim()); else store.del("key");
-    renderEngine();
-  };
-  ["provider","model","baseUrl","apiKey","rememberKey"].forEach(id => $(id).addEventListener("input", sync));
-  $("provider").addEventListener("change", sync); $("rememberKey").addEventListener("change", sync);
-  sync();
-  if(!engineReady()) $("settingsBox").open = true;
-})();
-
 /* ---------- tracker ---------- */
 const STATUSES = ["Saved","Applied","Interviewing","Offer","Rejected"];
 const STATUS_STYLE = {Saved:["var(--sunk)","var(--muted)"],Applied:["var(--accent-soft)","var(--accent)"],Interviewing:["var(--warn-soft)","var(--warn)"],Offer:["var(--good-soft)","var(--good)"],Rejected:["var(--bad-soft)","var(--bad)"]};
@@ -789,8 +743,9 @@ $("csvBtn").addEventListener("click", e => {
 /* ---------- boot ---------- */
 renderTabs(); renderTracker(); renderEngine();
 (async () => {
-  if(!window.claude || typeof window.claude.use !== "function") return;
-  try{ claudeSample = await window.claude.use("sample"); }catch{ claudeSample = null; }
-  renderEngine();
+  if(window.claude && typeof window.claude.use === "function"){
+    try{ claudeSample = await window.claude.use("sample"); }catch{ claudeSample = null; }
+  }
+  checkApi();
 })();
 </script>

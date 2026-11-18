@@ -22,6 +22,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: python scripts/build_web.py
+        env:
+          API_URL: ${{ vars.API_URL }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

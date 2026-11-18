@@ -6,10 +6,14 @@ Outputs:
 """
 
 import json
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 MARKER = "/*PROMPTS*/null"
+API_MARKER = '/*API_URL*/""'
+# URL of the deployed Cloudflare Worker (see worker/). Override with the API_URL env var.
+DEFAULT_API_URL = ""
 
 
 def build() -> Path:
@@ -19,6 +23,10 @@ def build() -> Path:
         raise SystemExit(f"Marker {MARKER!r} not found in web/app.html")
     # Escape "</" so prompt text can never close the <script> tag.
     fragment = src.replace(MARKER, json.dumps(prompts, ensure_ascii=False).replace("</", "<\\/"))
+    api_url = (os.environ.get("API_URL") or DEFAULT_API_URL).strip().rstrip("/")
+    if API_MARKER not in fragment:
+        raise SystemExit(f"Marker {API_MARKER!r} not found in web/app.html")
+    fragment = fragment.replace(API_MARKER, json.dumps(api_url))
     dist = ROOT / "dist"
     dist.mkdir(exist_ok=True)
     (dist / "app.html").write_text(fragment, encoding="utf-8")

@@ -1,0 +1,18 @@
+name = "job-apply-helper"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# Sites allowed to call the API (comma-separated). localhost is always allowed for development.
+ALLOWED_ORIGINS = "https://sushmoydatta.github.io"
+RATE_PER_MINUTE = "6"
+# MODEL = "llama-3.3-70b-versatile"
+
+# Per-visitor rate limit enforced by Cloudflare (6 requests per minute per IP).
+[[unsafe.bindings]]
+name = "LIMITER"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 6, period = 60 }
+
+# The Groq key is a secret, never committed:  npx wrangler secret put GROQ_API_KEY
