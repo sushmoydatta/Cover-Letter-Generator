@@ -16,4 +16,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node --test worker/test/worker.test.mjs
+      - run: node --test shared/test/ats.test.mjs worker/test/worker.test.mjs

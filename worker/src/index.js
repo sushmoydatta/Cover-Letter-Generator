@@ -3,12 +3,17 @@
  *
  * POST /generate  {task, resume, job, style?, contact?, question?}
  *   -> streams OpenAI-style server-sent events ("data: {choices:[{delta:{content}}]}")
+ * POST /analyze   {resume, job, llm?:true}
+ *   -> JSON: deterministic ATS report (score, breakdown, keyword evidence, bullet audit, prioritised fixes)
+ *      plus, unless llm:false, an AI "posting analysis" and a "recruiter view". The score is computed in code,
+ *      never by the model, and is returned even if the AI part fails.
  * GET  /health    -> {ok:true}
  *
  * Prompts are built here from jobhelper/prompts.json, so the endpoint only does the
  * app's six tasks and cannot be used as a general-purpose free LLM proxy.
  */
 import PROMPTS from "../../jobhelper/prompts.json";
+import { analyze } from "../../shared/ats.js";
 
 const MAX_INPUT = 15000;
 // Used only if Groq's model list can't be fetched.
@@ -83,6 +88,10 @@ export function buildPrompt(body) {
   let extra = "";
   if (body.task === "letter") extra = PROMPTS.letter_styles[str(body.style)] || PROMPTS.letter_styles.professional;
   if (body.task === "outreach" && str(body.contact)) extra = `The recipient is: ${str(body.contact).slice(0, 200)}.`;
+  if (body.task === "rewrite" || body.task === "gapplan") {
+    extra = str(body.focus).slice(0, 2500);
+    if (!extra) throw new Error("Nothing to work on yet. Run the ATS score first.");
+  }
   if (body.task === "answer") {
     extra = str(body.question).slice(0, 1000);
     if (!extra) throw new Error("Question is required.");
@@ -91,7 +100,7 @@ export function buildPrompt(body) {
   return { system: PROMPTS.system, user };
 }
 
-async function callGroq(env, prompt) {
+async function callGroq(env, prompt, { stream = true, temperature = 0.4 } = {}) {
   for (let attempt = 0; attempt < 2; attempt++) {
     const discovered = await getModels(env, attempt === 1);
     const models = [...new Set([env.MODEL, ...discovered].filter(Boolean))].slice(0, 3);
@@ -102,8 +111,8 @@ async function callGroq(env, prompt) {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.GROQ_API_KEY}` },
         body: JSON.stringify({
           model,
-          temperature: 0.4,
-          stream: true,
+          temperature,
+          stream,
           messages: [
             { role: "system", content: prompt.system },
             { role: "user", content: prompt.user },
@@ -118,13 +127,50 @@ async function callGroq(env, prompt) {
   return new Response(JSON.stringify({ error: { message: "No Groq model is available for this key." } }), { status: 502 });
 }
 
+
+function parseJsonLoose(text) {
+  const t = String(text).trim().replace(/^```(?:json)?\s*|\s*```$/gi, "");
+  try { return JSON.parse(t); } catch {}
+  const a = t.indexOf("{"), b = t.lastIndexOf("}");
+  if (a !== -1 && b > a) { try { return JSON.parse(t.slice(a, b + 1)); } catch {} }
+  throw new Error("The AI returned an unreadable answer.");
+}
+
+async function askJson(env, task, body) {
+  const prompt = buildPrompt({ ...body, task });
+  const res = await callGroq(env, prompt, { stream: false, temperature: 0.2 });
+  if (!res.ok) throw new Error(`Groq ${res.status}`);
+  const data = await res.json();
+  return parseJsonLoose(data.choices?.[0]?.message?.content || "");
+}
+
+const asList = (v) => (Array.isArray(v) ? v.map((x) => String(x).slice(0, 400)).slice(0, 15) : []);
+const asText = (v, n = 500) => (typeof v === "string" ? v.slice(0, n) : "");
+
+export function cleanRecruiter(r) {
+  const decision = ["shortlist", "maybe", "reject"].includes(r?.decision) ? r.decision : "maybe";
+  return {
+    first_impression: asText(r?.first_impression), decision,
+    confidence: Math.max(0, Math.min(100, parseInt(r?.confidence) || 50)),
+    reasons_for: asList(r?.reasons_for), reasons_against: asList(r?.reasons_against), red_flags: asList(r?.red_flags),
+    questions_to_probe: asList(r?.questions_to_probe), pitch: asText(r?.pitch),
+  };
+}
+export function cleanJd(j) {
+  return {
+    company: asText(j?.company, 120), role: asText(j?.role, 160), domain: asText(j?.domain, 120), summary: asText(j?.summary),
+    must_have: asList(j?.must_have), nice_to_have: asList(j?.nice_to_have), what_they_really_want: asList(j?.what_they_really_want),
+    ats_keywords: asList(j?.ats_keywords), red_flags: asList(j?.red_flags), likely_screening_questions: asList(j?.likely_screening_questions),
+  };
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     const cors = corsHeaders(req, env);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: (({ _ok, ...h }) => h)(cors) });
     if (url.pathname === "/health") return json({ ok: true, configured: !!env.GROQ_API_KEY }, 200, cors);
-    if (url.pathname !== "/generate" || req.method !== "POST") return json({ error: "Not found" }, 404, cors);
+    if (!["/generate", "/analyze"].includes(url.pathname) || req.method !== "POST") return json({ error: "Not found" }, 404, cors);
     if (!cors._ok) return json({ error: "This site is not allowed to use the API." }, 403, cors);
     if (!env.GROQ_API_KEY) return json({ error: "The service is not configured yet." }, 503, cors);
 
@@ -135,6 +181,28 @@ export default {
       if (!success) return json({ error: "Too many requests. Please wait a minute and try again." }, 429, cors);
     } else if (memLimited(ip, perMinute, 60_000)) {
       return json({ error: "Too many requests. Please wait a minute and try again." }, 429, cors);
+    }
+
+    if (url.pathname === "/analyze") {
+      let body;
+      try {
+        const text = await req.text();
+        if (text.length > 2 * MAX_INPUT + 4000) throw new Error("Request is too large.");
+        body = JSON.parse(text);
+        buildPrompt({ ...body, task: "jd" }); // validates resume and job length/size
+      } catch (e) {
+        return json({ error: e.message || "Invalid request." }, 400, cors);
+      }
+      const ats = analyze(body.resume, body.job);
+      const out = { ats, jd: null, recruiter: null, llm_error: null };
+      if (body.llm !== false) {
+        const [jd, rec] = await Promise.allSettled([askJson(env, "jd", body), askJson(env, "recruiter", body)]);
+        if (jd.status === "fulfilled") out.jd = cleanJd(jd.value);
+        if (rec.status === "fulfilled") out.recruiter = cleanRecruiter(rec.value);
+        const failed = [jd, rec].find((r) => r.status === "rejected");
+        if (failed) out.llm_error = "The AI review is unavailable right now. Your ATS score below is still accurate.";
+      }
+      return json(out, 200, cors);
     }
 
     let prompt;

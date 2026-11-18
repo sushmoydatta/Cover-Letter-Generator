@@ -26,6 +26,24 @@
     "answer": {
       "label": "Application question",
       "prompt": "Answer this question from the job application form on the candidate's behalf, in first person, grounded in the resume and tailored to the posting. Keep it under 200 words unless the question asks for more. Plain text only.\n\nQuestion: {extra}\n\n### RESUME\n{resume}\n\n### JOB POSTING\n{job}"
+    },
+    "recruiter": {
+      "label": "Recruiter view",
+      "json": true,
+      "prompt": "You are a senior technical recruiter doing a first-pass screen. Judge this candidate ONLY from evidence on the resume. Do not use or infer the candidate's name, gender, age, nationality, photo or the prestige of their university as factors. If something is not on the resume, treat it as unknown, not as a strength.\n\nReturn ONLY a JSON object with these keys:\n- \"first_impression\": what a recruiter notices in the first 6 seconds of reading, in 1-2 sentences\n- \"decision\": one of \"shortlist\", \"maybe\", \"reject\"\n- \"confidence\": integer 0-100 for that decision\n- \"reasons_for\": array of 2-4 specific points, each citing evidence from the resume\n- \"reasons_against\": array of 1-4 specific concerns, each tied to a requirement in the posting\n- \"red_flags\": array of things a recruiter would question (gaps, vague claims, mismatched level, unexplained jumps); empty if none\n- \"questions_to_probe\": array of 3-5 questions the recruiter would ask on a screening call, each tied to something on the resume or a gap\n- \"pitch\": the one sentence the recruiter would say to the hiring manager if they shortlist this candidate, or \"\" if rejecting\n\nBe honest and calibrated. Most candidates are \"maybe\".\n\n### RESUME\n{resume}\n\n### JOB POSTING\n{job}"
+    },
+    "jd": {
+      "label": "Posting analysis",
+      "json": true,
+      "prompt": "Analyse this job posting like a recruiter who wrote it. Use ONLY what the posting says. Return ONLY a JSON object with these keys:\n- \"company\": company name or \"\"\n- \"role\": job title\n- \"domain\": the field in 2-4 words (e.g. \"telecom network analytics\")\n- \"summary\": what this job really is, in one plain sentence\n- \"must_have\": array of the genuinely required skills and qualifications, in the posting's own words\n- \"nice_to_have\": array of preferred or bonus items\n- \"what_they_really_want\": array of 2-3 sentences-as-strings about the underlying priorities you can infer from emphasis and repetition (e.g. \"owns problems end to end\")\n- \"ats_keywords\": array of up to 15 exact phrases from the posting that an applicant tracking system would likely search for\n- \"red_flags\": array of warning signs in the posting itself (unrealistic stack, vague duties, 'rockstar' language); empty if none\n- \"likely_screening_questions\": array of 4 questions the employer would likely ask at application time\n\n### JOB POSTING\n{job}\n\n### CANDIDATE RESUME (for context only; do not analyse it)\n{resume}"
+    },
+    "rewrite": {
+      "label": "Bullet rewrites",
+      "prompt": "Rewrite the candidate's weakest resume bullets so they would score well with a recruiter and an applicant tracking system, WITHOUT inventing anything.\n\nRules:\n- Use the formula: strong action verb + what you did + how (tools or method) + result.\n- Use ONLY facts in the original bullet or elsewhere on the resume.\n- If a number would help but is not on the resume, write a placeholder like [X%] or [N users] and mark that line \"Add your real number\". Never make up a figure.\n- Work in keywords from the job posting only where they are honestly true for this bullet.\n- Keep each rewrite under 28 words.\n\nThe bullets to rewrite are:\n{extra}\n\nReturn markdown. For each bullet use this exact layout:\n### Original\n(the original bullet)\n**Better:** (rewrite)\n*Why:* (one short reason, naming the change)\n\n### RESUME\n{resume}\n\n### JOB POSTING\n{job}"
+    },
+    "gapplan": {
+      "label": "Gap plan",
+      "prompt": "The candidate's resume does not show these requirements from the job posting:\n{extra}\n\nFor each one, give an honest, practical plan. Return markdown with one section per requirement:\n## (requirement)\n**Honest framing:** if the resume shows a related skill, one sentence the candidate can truthfully use; otherwise say it is a gap and how to own it.\n**Build proof this week:** one small, concrete project or exercise (2-6 hours) that produces something to show.\n**Interview line:** one sentence the candidate can say if asked, starting with what they HAVE done.\n\nNever suggest claiming experience the candidate does not have. Be specific to their background.\n\n### RESUME\n{resume}\n\n### JOB POSTING\n{job}"
     }
   },
   "letter_styles": {

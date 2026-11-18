@@ -7,10 +7,13 @@ Outputs:
 
 import json
 import os
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 MARKER = "/*PROMPTS*/null"
+ENGINE_MARKER = "/*ATS_ENGINE*/"
+ENGINE_EXPORTS = "analyze, findSkills, parseResume, parseJob, scoreBullet, skillMatches, monthsOfExperience"
 API_MARKER = '/*API_URL*/""'
 # URL of the deployed Cloudflare Worker (see worker/). Override with the API_URL env var.
 DEFAULT_API_URL = "https://job-apply-helper.sushmoi007.workers.dev"
@@ -23,6 +26,12 @@ def build() -> Path:
         raise SystemExit(f"Marker {MARKER!r} not found in web/app.html")
     # Escape "</" so prompt text can never close the <script> tag.
     fragment = src.replace(MARKER, json.dumps(prompts, ensure_ascii=False).replace("</", "<\\/"))
+    if ENGINE_MARKER not in fragment:
+        raise SystemExit(f"Marker {ENGINE_MARKER!r} not found in web/app.html")
+    engine = (ROOT / "shared" / "ats.js").read_text(encoding="utf-8")
+    engine = re.sub(r"^export ", "", engine, flags=re.M)
+    # Wrap in an IIFE so the engine's helpers never clash with the page's own globals.
+    fragment = fragment.replace(ENGINE_MARKER, f"const ATS = (() => {{\n{engine}\nreturn {{ {ENGINE_EXPORTS} }};\n}})();".replace("</", "<\\/"))
     api_url = (os.environ.get("API_URL") or DEFAULT_API_URL).strip().rstrip("/")
     if API_MARKER not in fragment:
         raise SystemExit(f"Marker {API_MARKER!r} not found in web/app.html")

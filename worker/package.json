@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "node --test test/worker.test.mjs"
+    "test": "node --test ../shared/test/ats.test.mjs test/worker.test.mjs"
   },
   "devDependencies": {
     "wrangler": "^3.100.0"

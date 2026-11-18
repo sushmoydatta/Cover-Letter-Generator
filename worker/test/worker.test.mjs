@@ -8,10 +8,10 @@ import path from "node:path";
 // Load the worker source, swapping the JSON import (bundled by wrangler) for an inline object.
 const here = path.dirname(fileURLToPath(import.meta.url));
 const prompts = readFileSync(path.join(here, "../../jobhelper/prompts.json"), "utf8");
-const src = readFileSync(path.join(here, "../src/index.js"), "utf8").replace(
-  /import PROMPTS from .*;/,
-  `const PROMPTS = ${prompts};`,
-);
+const engine = readFileSync(path.join(here, "../../shared/ats.js"), "utf8").replace(/^export /gm, "");
+const src = readFileSync(path.join(here, "../src/index.js"), "utf8")
+  .replace(/import PROMPTS from .*;/, () => `const PROMPTS = ${prompts};`)
+  .replace(/import \{ analyze \} from .*;/, () => engine);
 const mod = await import("data:text/javascript;base64," + Buffer.from(src).toString("base64"));
 const worker = mod.default;
 
@@ -132,4 +132,90 @@ test("falls back to built-in models when the model list is unavailable", async (
   const res = await worker.fetch(req(body, ORIGIN, "6.6.6.6"), env3);
   assert.equal(res.status, 200);
   assert.deepEqual(tried, ["llama-3.3-70b-versatile"]);
+});
+
+/* ------------------------------------------------------------------ /analyze */
+const RESUME = `Alex Rivera
+alex@example.com | +91 98765 43210 | linkedin.com/in/alex
+Education
+M.Tech, Electronics Engineering (2024 - 2026)
+Skills
+Python, PyTorch, SQL
+Experience
+ML Engineer Intern, Example Corp (Jun 2023 - Dec 2023)
+• Built an online learning pipeline in Python and PyTorch that cut regret by 18% across 40K trials
+• Automated KPI reports with SQL, saving the team 6 hours per week`;
+const JOB = `Machine Learning Engineer
+Requirements:
+- Python and PyTorch or TensorFlow
+- Docker and AWS or GCP experience
+Preferred: Kubernetes`;
+const areq = (b, ip) => new Request("https://api.example/analyze", {
+  method: "POST", headers: { Origin: ORIGIN, "CF-Connecting-IP": ip, "Content-Type": "application/json" }, body: JSON.stringify(b),
+});
+const llmReply = (content) => new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status: 200 });
+
+test("/analyze returns the deterministic ATS report plus AI posting analysis and recruiter view", async () => {
+  const env2 = { ...env, GROQ_API_KEY: "key-an1" };
+  globalThis.fetch = async (url, init) => {
+    if (isModels(url)) return modelList(...DEFAULT_LIST);
+    const user = JSON.parse(init.body).messages[1].content;
+    assert.equal(JSON.parse(init.body).stream, false);
+    return user.includes("senior technical recruiter")
+      ? llmReply('```json\n{"first_impression":"Relevant ML intern","decision":"SHORTLIST","confidence":"140","reasons_for":["PyTorch pipeline"],"reasons_against":["No Docker"],"questions_to_probe":["Docker?"],"pitch":"Solid junior ML fit"}\n```')
+      : llmReply('{"company":"Acme","role":"ML Engineer","must_have":["Python"],"ats_keywords":["PyTorch"],"summary":"ML role"}');
+  };
+  const res = await worker.fetch(areq({ resume: RESUME, job: JOB }, "10.0.0.1"), env2);
+  assert.equal(res.status, 200);
+  const out = await res.json();
+  assert.ok(out.ats.score > 0 && out.ats.breakdown.length === 6 && out.ats.keywords.length > 0);
+  assert.equal(out.jd.company, "Acme");
+  assert.equal(out.recruiter.decision, "maybe");           // "SHORTLIST" (wrong case) is not trusted: normalised to a safe default
+  assert.equal(out.recruiter.confidence, 100);             // clamped
+  assert.deepEqual(out.recruiter.reasons_for, ["PyTorch pipeline"]);
+  assert.equal(out.llm_error, null);
+});
+
+test("/analyze still returns the score when the AI is unavailable", async () => {
+  const env2 = { ...env, GROQ_API_KEY: "key-an2" };
+  globalThis.fetch = async (url) => (isModels(url) ? modelList(...DEFAULT_LIST) : new Response("boom", { status: 500 }));
+  const res = await worker.fetch(areq({ resume: RESUME, job: JOB }, "10.0.0.2"), env2);
+  assert.equal(res.status, 200);
+  const out = await res.json();
+  assert.ok(out.ats.score > 0);
+  assert.equal(out.jd, null);
+  assert.equal(out.recruiter, null);
+  assert.match(out.llm_error, /still accurate/);
+});
+
+test("/analyze with llm:false makes no AI calls and is deterministic", async () => {
+  let aiCalls = 0;
+  globalThis.fetch = async () => { aiCalls++; return new Response("x", { status: 500 }); };
+  const a = await (await worker.fetch(areq({ resume: RESUME, job: JOB, llm: false }, "10.0.0.3"), env)).json();
+  const b = await (await worker.fetch(areq({ resume: RESUME, job: JOB, llm: false }, "10.0.0.4"), env)).json();
+  assert.equal(aiCalls, 0);
+  assert.equal(a.ats.score, b.ats.score);
+});
+
+test("/analyze validates input and respects origin and rate limits", async () => {
+  assert.equal((await worker.fetch(areq({ resume: "short", job: JOB, llm: false }, "10.0.0.5"), env)).status, 400);
+  assert.equal((await worker.fetch(areq({ resume: RESUME, job: "x".repeat(20001) , llm: false}, "10.0.0.6"), env)).status, 400);
+  const r = areq({ resume: RESUME, job: JOB, llm: false }, "10.0.0.7");
+  const bad = new Request(r.url, { method: "POST", headers: { Origin: "https://evil.example", "CF-Connecting-IP": "10.0.0.8" }, body: await r.text() });
+  assert.equal((await worker.fetch(bad, env)).status, 403);
+});
+
+test("rewrite and gap-plan tasks take a focus list and refuse to run without one", async () => {
+  const env2 = { ...env, GROQ_API_KEY: "key-rw" };
+  const seen = [];
+  globalThis.fetch = async (url, init) => {
+    if (isModels(url)) return modelList(...DEFAULT_LIST);
+    seen.push(JSON.parse(init.body).messages[1].content);
+    return new Response("data: [DONE]\n\n", { status: 200 });
+  };
+  const ok = await worker.fetch(req({ task: "rewrite", resume: RESUME, job: JOB, focus: "- Worked on stuff" }, ORIGIN, "11.0.0.1"), env2);
+  assert.equal(ok.status, 200);
+  assert.match(seen[0], /Worked on stuff/);
+  assert.match(seen[0], /never make up a figure/i);
+  assert.equal((await worker.fetch(req({ task: "gapplan", resume: RESUME, job: JOB }, ORIGIN, "11.0.0.2"), env2)).status, 400);
 });

@@ -2,7 +2,7 @@ name: Deploy API (Cloudflare Worker)
 on:
   push:
     branches: [main]
-    paths: ["worker/**", "jobhelper/prompts.json", ".github/workflows/deploy-api.yml"]
+    paths: ["worker/**", "shared/**", "jobhelper/prompts.json", ".github/workflows/deploy-api.yml"]
   workflow_dispatch:
 jobs:
   deploy:
@@ -13,7 +13,7 @@ jobs:
         with:
           node-version: 22
       - name: Test worker
-        run: node --test worker/test/worker.test.mjs
+        run: node --test shared/test/ats.test.mjs worker/test/worker.test.mjs
       - name: Check Cloudflare secrets are set
         id: check
         env:

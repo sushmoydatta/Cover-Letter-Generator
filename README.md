@@ -4,7 +4,9 @@ Paste a job posting and your resume, and get everything you need to apply. Every
 
 | Tool | What you get |
 |---|---|
-| **Match report** | A 0-100 fit score, which requirements you meet, which ones your resume doesn't show, and keywords you can truthfully add |
+| **ATS score** | A live 0-100 *ATS readiness estimate* with a six-part breakdown, a "fix these first" list ranked by points gained, skill-by-skill evidence, a bullet-point audit and a structure checklist. Plus an AI recruiter review (shortlist / maybe / reject with reasons and screening questions) and a posting analysis |
+| **Bullet rewrites** | Your weakest bullets rewritten with action verb + tool + result. Missing numbers become `[X%]` placeholders, never invented figures |
+| **Gap plan** | For each skill the posting wants and you lack: how to frame it honestly, a 2-6 hour project that builds proof, and an interview line |
 | **Cover letter** | A tailored letter in one of four styles: professional, enthusiastic, concise or academic |
 | **Resume tweaks** | A targeted headline, bullets rewritten in the posting's language, and a "do not claim" list |
 | **Recruiter outreach** | A LinkedIn note under 300 characters, a recruiter email, a referral request and a follow-up |
@@ -19,7 +21,7 @@ Paste a job posting and your resume, and get everything you need to apply. Every
 - **On GitHub Pages:** the page calls the API, and the API calls Groq with the owner's key.
 - **On claude.ai (as a shared Artifact):** the page uses the visitor's own Claude account instead.
 
-### How the API is protected
+### How the ATS score works
 
 - Prompts are built **on the server** from `jobhelper/prompts.json`. The API only runs the app's six tasks, so it can't be used as a free general-purpose LLM endpoint.
 - Only origins listed in `ALLOWED_ORIGINS` can call it (`worker/wrangler.toml`).
@@ -78,6 +80,7 @@ jobhelper/
   config.py      # provider settings from env / .env
   cli.py         # `jobhelper` command
 web/app.html     # the web app (prompts and API URL are injected at build time)
+shared/ats.js    # ATS / recruiter scoring engine (runs in the browser, the Worker and tests)
 worker/          # Cloudflare Worker API that keeps the Groq key server-side
 scripts/build_web.py
 tests/           # pytest suite (no network; the LLM is mocked)
@@ -97,7 +100,7 @@ notebooks/exploration.ipynb   # original prototype
 ```bash
 pip install -e ".[dev]"
 pytest -q
-node --test worker/test/worker.test.mjs
+node --test shared/test/ats.test.mjs worker/test/worker.test.mjs
 python scripts/build_web.py && python -m http.server -d dist 8000
 ```
 

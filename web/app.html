@@ -191,6 +191,53 @@ footer nav{display:flex;gap:18px} footer a{color:var(--muted)} footer a:hover{co
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;z-index:70;background:var(--fg);color:var(--bg);padding:12px 20px;border-radius:999px;font-weight:600;box-shadow:var(--shadow);transition:opacity .25s,transform .25s;pointer-events:none;max-width:calc(100vw - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:69;width:100%;height:100%}
+
+/* ATS report */
+.ats-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:22px;align-items:center}
+@media (max-width:520px){.ats-head{grid-template-columns:minmax(0,1fr)}}
+.ats-head .role{font:600 1.35rem/1.2 var(--serif);margin:0}
+.ats-head .grade{display:inline-block;margin:6px 0 4px;padding:3px 12px;border-radius:999px;font:600 .8rem var(--mono);text-transform:uppercase;letter-spacing:.08em}
+.grade.good{background:var(--good-soft);color:var(--good)} .grade.warn{background:var(--warn-soft);color:var(--warn)} .grade.bad{background:var(--bad-soft);color:var(--bad)}
+.ats-head .verdict{font:600 1.25rem/1.25 var(--hand);color:var(--pencil);margin:0}
+.fineprint{font-size:.76rem;color:var(--faint);margin:12px 0 0;line-height:1.45}
+.out .bars{display:grid;gap:14px;margin:0 0 4px}
+.bar-top{display:flex;justify-content:space-between;gap:12px;font-size:.9rem}
+.bar-top b{font-weight:600} .bar-top span{font:500 .8rem var(--mono);color:var(--muted);white-space:nowrap}
+.track{height:8px;border-radius:99px;background:var(--sunk);overflow:hidden;margin:6px 0 4px}
+.track i{display:block;height:100%;border-radius:99px;transition:width .7s cubic-bezier(.2,.9,.25,1)}
+.track i.good{background:var(--good)} .track i.warn{background:var(--warn)} .track i.bad{background:var(--bad)}
+.bar p{margin:0!important;font-size:.82rem;color:var(--muted);line-height:1.45}
+.out ol.fixes{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.out ol.fixes li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start;margin:0;padding:10px 12px;background:var(--sunk);border-radius:12px}
+.out ol.fixes li::marker{content:""}
+.gain{font:600 .8rem var(--mono);background:var(--accent-soft);color:var(--accent);padding:3px 8px;border-radius:999px;white-space:nowrap}
+.fixes b{font-weight:600;display:block} .fixes small{display:block;color:var(--muted);font-size:.84rem;margin-top:2px}
+.kw-group{margin:0 0 12px} .kw-group h4{font:500 .72rem var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--faint);margin:0 0 6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px 8px}
+.chip2{font-size:.84rem;padding:3px 9px;border-radius:6px 9px 6px 10px}
+.chip2.proven{background:var(--hl)} .chip2.listed{background:var(--warn-soft);color:var(--warn)}
+.chip2.related{border:1.5px solid var(--pencil);color:var(--pencil);border-radius:999px;font-weight:600;font-size:.82rem}
+.chip2.missing{text-decoration:underline wavy var(--pen);text-underline-offset:5px;text-decoration-thickness:1.5px;padding-inline:2px}
+.chip2 em{font:500 .66rem var(--mono)!important;text-transform:uppercase;letter-spacing:.06em;color:var(--faint)!important;margin-left:6px}
+.audit{display:grid;gap:10px}
+.audit-item{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--sunk)}
+.audit-item q{display:block;font-size:.9rem;quotes:none;margin-bottom:6px}
+.audit-item .meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:.8rem;color:var(--muted)}
+.pill{font:600 .72rem var(--mono);padding:2px 8px;border-radius:999px}
+.pill.good{background:var(--good-soft);color:var(--good)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)}
+.checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px 16px;margin:0;padding:0;list-style:none}
+.out .checks li{display:flex;gap:8px;align-items:flex-start;margin:0;font-size:.88rem} .out .checks li::marker{content:""}
+.checks .ok{color:var(--good);font-weight:700} .checks .no{color:var(--bad);font-weight:700}
+.checks small{display:block;color:var(--muted)}
+.ai-card{border:1.5px dashed var(--line);border-radius:14px;padding:16px;margin-top:6px}
+.ai-card.live{border-style:solid;background:var(--sunk)}
+.decision{display:inline-flex;align-items:center;gap:8px;padding:4px 14px;border-radius:999px;font-weight:600;font-size:.9rem}
+.decision.shortlist{background:var(--good-soft);color:var(--good)} .decision.maybe{background:var(--warn-soft);color:var(--warn)} .decision.reject{background:var(--bad-soft);color:var(--bad)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:4px 24px}
+.skeleton{height:12px;border-radius:6px;background:linear-gradient(90deg,var(--sunk),var(--line),var(--sunk));background-size:200% 100%;animation:shimmer 1.3s infinite;margin:10px 0}
+@keyframes shimmer{to{background-position:-200% 0}}
+.cta-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.quote{font:600 1.2rem/1.3 var(--hand);color:var(--pencil);margin:8px 0 0}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 
@@ -312,6 +359,7 @@ footer nav{display:flex;gap:18px} footer a{color:var(--muted)} footer a:hover{co
 <canvas id="confetti" aria-hidden="true"></canvas>
 
 <script>
+/*ATS_ENGINE*/
 const PROMPTS = /*PROMPTS*/null;
 
 const EXAMPLE_RESUME = `Alex Rivera
@@ -346,14 +394,6 @@ Requirements:
 - Experience with Docker and cloud (AWS/GCP)
 - Clear written communication`;
 
-const EXAMPLE_MATCH = {company:"Example Robotics",role:"Machine Learning Engineer, Graduate",score:72,
-  verdict:"Strong ML and hardware fundamentals; missing production tooling the posting asks for.",
-  matched_skills:["Python","PyTorch","Online learning","FPGA deployment","ECE Master's"],
-  missing_skills:["Docker","AWS/GCP"],
-  keywords_to_add:["online learning","bandit algorithms","FPGA"],
-  strengths:["Thesis on FTRL/FTPL bandits maps directly to online learning","Verilog CPU shows embedded/FPGA depth"],
-  gaps:["No Docker or cloud shown: mention a small project you can containerise before interviewing"],
-  advice:"Lead with the thesis in your first paragraph, and add 'online learning' to your skills line."};
 
 /* ---------- storage (per-browser convenience; always optional) ---------- */
 const store = {
@@ -417,6 +457,7 @@ async function callAI(req, {onText, signal} = {}){
     if(req.task === "letter") extra = PROMPTS.letter_styles[req.style] || PROMPTS.letter_styles.professional;
     if(req.task === "outreach" && req.contact) extra = `The recipient is: ${req.contact}.`;
     if(req.task === "answer") extra = req.question;
+    if(req.task === "rewrite" || req.task === "gapplan") extra = req.focus;
     const user = t.prompt.replaceAll("{extra}", extra).replaceAll("{resume}", req.resume).replaceAll("{job}", req.job);
     const res = await claudeSample(`${PROMPTS.system}\n\n${user}`, {onText: ({text}) => onText && onText(text), signal, modelTier:"default", cache:false});
     return res.text;
@@ -441,20 +482,22 @@ function parseJSON(text){
 
 /* ---------- tools ---------- */
 const TOOLS = [
-  {id:"match", opts:""},
+  {id:"ats", opts:""},
   {id:"letter", opts:`<label class="field">Style<select id="optStyle">${Object.keys(PROMPTS.letter_styles).map(s=>`<option value="${s}">${s[0].toUpperCase()+s.slice(1)}</option>`).join("")}</select></label>`},
   {id:"tailor", opts:""},
+  {id:"rewrite", opts:""},
+  {id:"gapplan", opts:""},
   {id:"outreach", opts:`<label class="field">Writing to (optional)<input type="text" id="optContact" placeholder="e.g. Priya, Engineering Manager"></label>`},
   {id:"interview", opts:""},
   {id:"answer", opts:`<label class="field" style="flex-basis:100%">Application question<input type="text" id="optQuestion" placeholder="Why do you want to work at this company?"></label>`}
 ];
-let active = store.get("tab", "match");
-if(!TOOLS.some(t => t.id === active)) active = "match";
+let active = store.get("tab", "ats");
+if(!TOOLS.some(t => t.id === active)) active = "ats";
 const results = {};      // tool id -> {kind:"match"|"md"|"plain", data}
 let controller = null;
 
 function renderTabs(){
-  $("tabs").innerHTML = TOOLS.map(t => `<button class="tab" role="tab" id="tab-${t.id}" aria-selected="${t.id===active}" data-id="${t.id}">${esc(PROMPTS.tasks[t.id].label)}</button>`).join("");
+  $("tabs").innerHTML = TOOLS.map(t => `<button class="tab" role="tab" id="tab-${t.id}" aria-selected="${t.id===active}" data-id="${t.id}">${esc(LABELS[t.id] || PROMPTS.tasks[t.id].label)}</button>`).join("");
   $("opts").innerHTML = TOOLS.find(t => t.id === active).opts;
   $("opts").hidden = !$("opts").innerHTML;
   const remembered = store.get("opt:"+active, null);
@@ -471,53 +514,119 @@ $("tabs").addEventListener("click", e => {
 function renderOutput(){
   const r = results[active], out = $("out");
   out.classList.remove("plain");
-  if(!r){
-    if(active === "match" && !results._userRan){ out.innerHTML = `<div class="example-note">Example report for the example resume and posting. Replace them with yours and press Generate.</div>` + matchHTML(EXAMPLE_MATCH); return; }
-    out.innerHTML = `<p class="hint">Press <b>Generate</b> to create your ${esc(PROMPTS.tasks[active].label.toLowerCase())}.</p>`; return;
+  if(active === "ats"){
+    if(!report){ out.innerHTML = `<p class="hint">Add your resume and the job posting (at least a few lines each) and your ATS score appears here, live.</p>`; return; }
+    const isExample = $("resume").value === EXAMPLE_RESUME && $("job").value === EXAMPLE_JOB;
+    out.innerHTML = atsHTML(report, isExample); return;
   }
-  if(r.kind === "match") out.innerHTML = matchHTML(r.data);
-  else if(r.kind === "plain"){ out.classList.add("plain"); out.textContent = r.data; }
+  if(!r){ out.innerHTML = `<p class="hint">Press <b>Generate</b> to create your ${esc((LABELS[active] || PROMPTS.tasks[active].label).toLowerCase())}.</p>`; return; }
+  if(r.kind === "plain"){ out.classList.add("plain"); out.textContent = r.data; }
   else out.innerHTML = md(r.data);
 }
 
-function matchHTML(m){
-  const s = Math.max(0, Math.min(100, parseInt(m.score) || 0));
-  const color = s >= 75 ? "var(--good)" : s >= 50 ? "var(--warn)" : "var(--bad)";
-  const marks = (arr, cls) => (arr && arr.length) ? `<ul class="marks-list ${cls}">${arr.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : `<p class="hint">None</p>`;
-  const list = arr => (arr && arr.length) ? `<ul>${arr.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";
-  return `<div class="match">
-    <div class="score" role="img" aria-label="Match score ${s} out of 100">
-      <svg viewBox="0 0 140 120" aria-hidden="true"><path stroke="${color}" d="M78 10 C112 8 136 34 130 64 C124 98 84 116 50 108 C18 100 2 72 10 44 C18 18 50 6 84 12 C96 14 104 18 110 23"/></svg>
-      <div class="n">${s}<small>/100</small></div>
-    </div>
-    <div style="min-width:0"><p class="role">${esc([m.role, m.company].filter(Boolean).join(" · ") || "Match report")}</p>${m.verdict ? `<p class="verdict">${esc(m.verdict)}</p>` : ""}</div>
-  </div>
-  <h3>You have this</h3>${marks(m.matched_skills,"good")}
-  <h3>Not on your resume</h3>${marks(m.missing_skills,"bad")}
-  <h3>Keywords to add, truthfully</h3>${marks(m.keywords_to_add,"kw")}
-  ${m.strengths?.length ? `<h3>Lead with</h3>${list(m.strengths)}` : ""}
-  ${m.gaps?.length ? `<h3>Address honestly</h3>${list(m.gaps)}` : ""}
-  ${m.advice ? `<h3>Next step</h3><p><em>${esc(m.advice)}</em></p>` : ""}
-  ${proofHTML($("resume").value, [...(m.matched_skills||[]), ...(m.keywords_to_add||[])])}`;
+/* ---------- ATS report: the score is computed in the browser (instant, private); AI parts are optional extras ---------- */
+const LABELS = {ats:"ATS score"};
+const hashStr = t => { let h = 5381; for(let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0; return String(h); };
+let report = null, reportKey = "", aiState = {key:"", status:"idle"}, recomputeTimer = 0;
+
+function recompute(){
+  const r = $("resume").value.trim(), j = $("job").value.trim();
+  reportKey = hashStr(r + "\u0000" + j);
+  try{ report = (r.length >= 80 && j.length >= 80) ? ATS.analyze(r, j) : null; }catch(e){ console.error(e); report = null; }
+  if(active === "ats") renderOutput();
+}
+function scheduleRecompute(){ clearTimeout(recomputeTimer); recomputeTimer = setTimeout(recompute, 350); }
+
+const tone = v => v >= .75 ? "good" : v >= .5 ? "warn" : "bad";
+const arr = v => Array.isArray(v) ? v.map(x => String(x)).slice(0, 15) : [];
+const list = a => a.length ? `<ul>${a.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
+const TIER = {must:"must", core:"core", nice:"nice"};
+
+function kwGroups(a){
+  const seen = new Set(), out = {proven:[], listed:[], related:[], missing:[]};
+  for(const r of a.keywords){
+    let label = r.skill, credit = r.credit, via = "", related = r.related;
+    if(r.group){
+      if(seen.has(r.group)) continue; seen.add(r.group);
+      const mem = a.keywords.filter(x => x.group === r.group);
+      const best = mem.find(x => !String(x.evidence).startsWith("covered")) || mem[0];
+      label = mem.map(x => x.skill).join(" or "); credit = best.credit; via = credit ? best.skill : ""; related = best.related;
+    }
+    const kind = credit >= 1 ? "proven" : credit >= .6 ? "listed" : credit > 0 ? "related" : "missing";
+    out[kind].push({label, tier:r.tier, via, related});
+  }
+  return out;
 }
 
-/* Highlight the posting's requirements wherever they appear in the resume. */
-const STOP = new Set("with and the for from into your their this that have has using experience strong solid skills skill knowledge years year understanding familiarity ability degree related field plus good".split(" "));
-function proofHTML(resume, terms){
-  if(!resume.trim() || !terms.length) return "";
-  const pats = new Set();
-  for(const t of terms){
-    const clean = String(t).replace(/\(.*?\)/g, " ").trim();
-    if(clean.length >= 2) pats.add(clean);
-    for(const w of clean.split(/[\s\/,;]+/)) if(w.length >= 3 && !STOP.has(w.toLowerCase())) pats.add(w);
+function proofMarkup(resume, a){
+  const names = a.keywords.filter(k => k.resumeCount > 0).map(k => k.skill);
+  let out = "", pos = 0, hits = 0;
+  for(const m of ATS.skillMatches(resume, names)){
+    if(m.start < pos) continue;
+    out += esc(resume.slice(pos, m.start)) + "<mark>" + esc(resume.slice(m.start, m.end)) + "</mark>"; pos = m.end; hits++;
   }
-  const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const sorted = [...pats].sort((x, y) => y.length - x.length).map(reEsc);
-  const re = new RegExp(`(?<![\\w+#])(${sorted.join("|")})(?![\\w+#])`, "gi");
-  let hits = 0;
-  const body = resume.split(re).map((part, i) => i % 2 ? (hits++, `<mark>${esc(part)}</mark>`) : esc(part)).join("");
-  if(!hits) return "";
-  return `<h3>Your resume, marked up</h3><p class="legend"><span><span class="mk-hl">${hits} matches</span> highlighted where the posting's requirements appear</span></p><div class="proof">${body}</div>`;
+  out += esc(resume.slice(pos));
+  return hits ? `<h3>Your resume, marked up</h3><p class="legend"><span><span class="mk-hl">${hits} matches</span> skills from the posting, highlighted where they appear in your resume</span></p><div class="proof">${out}</div>` : "";
+}
+
+function aiSection(a){
+  const st = aiState.key === reportKey ? aiState : {status:"idle"};
+  if(st.status === "idle") return `<h3>AI recruiter review</h3><div class="ai-card"><p style="margin:0">A recruiter's first-pass verdict, plus what the posting really wants and the questions you should expect. Press <b>Generate</b> to add it.</p></div>`;
+  if(st.status === "loading") return `<h3>AI recruiter review</h3><div class="ai-card"><p class="hint" style="margin:0">The recruiter is reading your resume…</p><div class="skeleton" style="width:90%"></div><div class="skeleton" style="width:75%"></div><div class="skeleton" style="width:84%"></div></div>`;
+  let html = "";
+  const rc = st.recruiter, jd = st.jd;
+  if(st.error && !rc && !jd) return `<h3>AI recruiter review</h3><div class="ai-card"><p style="margin:0;color:var(--bad)">${esc(st.error)}</p><p class="hint" style="margin:6px 0 0">Your ATS score above is unaffected. Press Generate to try again.</p></div>`;
+  if(rc){
+    const label = {shortlist:"Would shortlist", maybe:"On the fence", reject:"Would pass for now"}[rc.decision];
+    html += `<h3>Recruiter view</h3><div class="ai-card live"><div class="row" style="gap:10px"><span class="decision ${rc.decision}">${label}</span><span class="count">${rc.confidence}% confident</span></div>
+      ${rc.first_impression ? `<p class="quote">${esc(rc.first_impression)}</p>` : ""}
+      <div class="two"><div><h3>Working for you</h3>${list(rc.reasons_for)}</div><div><h3>Working against you</h3>${list(rc.reasons_against)}</div></div>
+      ${rc.red_flags.length ? `<h3>Red flags to explain</h3>${list(rc.red_flags)}` : ""}
+      ${rc.questions_to_probe.length ? `<h3>Questions they'd ask on a screening call</h3>${list(rc.questions_to_probe)}` : ""}
+      ${rc.pitch ? `<h3>The pitch to the hiring manager</h3><p><em>${esc(rc.pitch)}</em></p>` : ""}</div>`;
+  } else html += `<h3>Recruiter view</h3><div class="ai-card"><p class="hint" style="margin:0">The recruiter review didn't load this time. Press Generate to retry.</p></div>`;
+  if(jd){
+    const low = $("resume").value.toLowerCase();
+    html += `<h3>What this posting really wants</h3><div class="ai-card live">
+      ${jd.summary ? `<p style="margin-top:0"><b>${esc(jd.role || "")}</b>${jd.company ? " at " + esc(jd.company) : ""}${jd.domain ? " · " + esc(jd.domain) : ""}<br>${esc(jd.summary)}</p>` : ""}
+      ${jd.what_they_really_want.length ? `<h3>Underlying priorities</h3>${list(jd.what_they_really_want)}` : ""}
+      ${jd.ats_keywords.length ? `<h3>Exact phrases an ATS will search for</h3><div class="chips">${jd.ats_keywords.map(k => low.includes(k.toLowerCase()) ? `<span class="chip2 proven">${esc(k)}</span>` : `<span class="chip2 missing">${esc(k)}</span>`).join("")}</div><p class="fineprint">Highlighted = already on your resume. Underlined = add it only if it is true.</p>` : ""}
+      ${jd.red_flags.length ? `<h3>Warning signs in the posting</h3>${list(jd.red_flags)}` : ""}
+      ${jd.likely_screening_questions.length ? `<h3>Likely application questions</h3>${list(jd.likely_screening_questions)}` : ""}</div>`;
+  }
+  if(st.error) html += `<p class="fineprint">${esc(st.error)}</p>`;
+  return html;
+}
+
+function atsHTML(a, example){
+  const s = a.score, t = tone(s / 85 > 1 ? 1 : s >= 70 ? .8 : s >= 55 ? .6 : .3);
+  const color = {good:"var(--good)", warn:"var(--warn)", bad:"var(--bad)"}[t];
+  const g = kwGroups(a);
+  const chip = (c, kind) => `<span class="chip2 ${kind}" title="${esc(kind === "related" ? "You show " + c.related.join(", ") : "")}">${esc(c.label)}${kind === "related" ? ` <em>≈ ${esc(c.related[0] || "")}</em>` : kind === "listed" ? " <em>listed only</em>" : kind === "missing" ? ` <em>${TIER[c.tier]}</em>` : c.via && c.via !== c.label ? ` <em>via ${esc(c.via)}</em>` : ""}</span>`;
+  const grp = (title, kind) => g[kind].length ? `<div class="kw-group"><h4>${title}</h4><div class="chips">${g[kind].map(c => chip(c, kind)).join("")}</div></div>` : "";
+  const weak = a.bullets.weakest;
+  return `${example ? `<p class="example-note">This is a live score of the example resume and posting. Replace them with yours and it updates as you type.</p>` : ""}
+  <div class="ats-head">
+    <div class="score" role="img" aria-label="ATS readiness ${s} out of 100"><svg viewBox="0 0 140 120" aria-hidden="true"><path stroke="${color}" d="M78 10 C112 8 136 34 130 64 C124 98 84 116 50 108 C18 100 2 72 10 44 C18 18 50 6 84 12 C96 14 104 18 110 23"/></svg><div class="n">${s}<small>/100</small></div></div>
+    <div style="min-width:0"><p class="role">${esc(a.job.title || "This role")}</p><span class="grade ${t}">${esc(a.grade.label)}</span><p class="verdict">${esc(a.grade.verdict)}</p></div>
+  </div>
+  <p class="fineprint">${esc(a.disclaimer)}</p>
+  <h3>Where your points come from</h3>
+  <div class="bars">${a.breakdown.map(b => `<div class="bar"><div class="bar-top"><b>${esc(b.label)}</b><span>${b.points} / ${b.weight}</span></div><div class="track"><i class="${tone(b.ratio)}" style="width:${Math.round(b.ratio * 100)}%"></i></div><p>${esc(b.detail)}</p></div>`).join("")}</div>
+  <h3>Fix these first</h3>
+  ${a.fixes.length ? `<ol class="fixes">${a.fixes.slice(0, 7).map(f => `<li><span class="gain">+${f.gain}</span><div><b>${esc(f.text)}</b><small>${esc(f.action)}</small></div></li>`).join("")}</ol>` : `<p>Nothing major to fix. Nicely done.</p>`}
+  <h3>Skills the posting asks for</h3>
+  ${grp("Proven in your experience", "proven")}${grp("On your resume, but only in a skills list", "listed")}${grp("Related skills you have", "related")}${grp("Not on your resume", "missing")}
+  ${a.keywords.length ? "" : `<p class="hint">No known skills were recognised in this posting, so the score leans on its wording instead.</p>`}
+  ${a.vocabulary.length ? `<div class="kw-group"><h4>Other terms the posting repeats</h4><div class="chips">${a.vocabulary.map(v => `<span class="chip2 ${v.inResume ? "proven" : "missing"}">${esc(v.term)}</span>`).join("")}</div></div>` : ""}
+  <h3>Your bullet points</h3>
+  <p style="margin:0 0 10px">${a.bullets.total} bullets · average ${a.bullets.average}/100 · ${a.bullets.withMetrics}% show a result · ${a.bullets.withVerbs}% open with an action verb</p>
+  ${weak.length ? `<div class="audit">${weak.slice(0, 5).map(b => `<div class="audit-item"><q>${esc(b.text)}</q><div class="meta"><span class="pill ${tone(b.score / 100)}">${b.score}/100</span>${b.issues.map(i => `<span>${esc(i)}</span>`).join(" · ")}</div></div>`).join("")}</div><div class="cta-row"><button class="btn small" data-go="rewrite">Rewrite these with AI</button></div>` : a.bullets.total ? `<p>Every bullet is in good shape.</p>` : `<p class="hint">No bullet points were found. Use • bullets under each role.</p>`}
+  <h3>Structure checklist</h3>
+  <ul class="checks">${a.format.map(f => `<li><span class="${f.ok ? "ok" : "no"}">${f.ok ? "✓" : "✕"}</span><span>${esc(f.label)}${f.ok ? "" : `<small>${esc(f.tip)}</small>`}</span></li>`).join("")}</ul>
+  ${a.missing.length ? `<div class="cta-row"><button class="btn small" data-go="gapplan">Plan to close the gaps</button></div>` : ""}
+  ${aiSection(a)}
+  ${proofMarkup($("resume").value, a)}`;
 }
 
 function md(src){
@@ -544,27 +653,33 @@ async function generate(){
   const resume = $("resume").value.trim(), job = $("job").value.trim();
   if(resume.length < 80) return setStatus("Add your resume first (paste it or upload a PDF).", true);
   if(job.length < 80) return setStatus("Add the job posting text first.", true);
+  if(active === "ats"){ if(!report) recompute(); return runAIReview(resume, job); }
   const task = PROMPTS.tasks[active];
   const req = {task: active, resume: resume.slice(0, 15000), job: job.slice(0, 15000)};
+  if(active === "rewrite" || active === "gapplan"){
+    if(!report) recompute();
+    const weakB = report ? report.bullets.weakest.map(b => "- " + b.text) : [];
+    const gaps = report ? report.keywords.filter(k => k.credit === 0).map(k => `- ${k.alternatives && k.alternatives.length ? k.skill + " (or " + k.alternatives.join(" / ") + ")" : k.skill} (${k.tier === "must" ? "must-have" : k.tier === "core" ? "central to the duties" : "nice-to-have"})`) : [];
+    const focus = (active === "rewrite" ? weakB : [...new Set(gaps)]).slice(0, 8).join("\n");
+    if(!focus) return setStatus(active === "rewrite" ? "Your bullets are already strong, so there is nothing to rewrite." : "No gaps found. Your resume covers the posting's skills.", true);
+    req.focus = focus;
+  }
   if(active === "letter") req.style = $("optStyle").value;
   if(active === "outreach") req.contact = $("optContact").value.trim();
   if(active === "answer"){ req.question = $("optQuestion").value.trim(); if(!req.question) return setStatus("Type the application question first.", true); }
   const toolId = active;
-  results._userRan = true;
   controller = new AbortController();
   $("goBtn").disabled = true; $("stopBtn").hidden = false;
   setStatus("Writing your draft…");
   const out = $("out");
-  if(task.json) out.innerHTML = `<p class="hint">Analysing the match…</p>`;
-  else { out.classList.toggle("plain", toolId==="letter"||toolId==="answer"); out.textContent = ""; }
+  out.classList.toggle("plain", toolId==="letter"||toolId==="answer"); out.textContent = "";
   const plain = toolId === "letter" || toolId === "answer";
   try{
     const text = await callAI(req, {signal: controller.signal, onText: t => {
-      if(task.json || active !== toolId) return;
+      if(active !== toolId) return;
       if(plain) out.textContent = t; else out.innerHTML = md(t);
     }});
-    results[toolId] = task.json ? {kind:"match", data: parseJSON(text)} : {kind: plain ? "plain" : "md", data: text};
-    if(toolId === "match") store.set("lastMatch", results.match.data);
+    results[toolId] = {kind: plain ? "plain" : "md", data: text};
     setStatus("Done. Review and edit before you send it.");
   }catch(e){
     if(e.name === "AbortError" || e.code === "cancelled") setStatus("Stopped.");
@@ -573,6 +688,35 @@ async function generate(){
     controller = null; $("goBtn").disabled = false; $("stopBtn").hidden = true;
     if(active === toolId) renderOutput();
   }
+}
+function cleanRec(r){
+  return {decision:["shortlist","maybe","reject"].includes(r?.decision) ? r.decision : "maybe", confidence:Math.max(0, Math.min(100, parseInt(r?.confidence) || 50)),
+    first_impression:typeof r?.first_impression === "string" ? r.first_impression : "", reasons_for:arr(r?.reasons_for), reasons_against:arr(r?.reasons_against),
+    red_flags:arr(r?.red_flags), questions_to_probe:arr(r?.questions_to_probe), pitch:typeof r?.pitch === "string" ? r.pitch : ""};
+}
+function cleanJd(j){
+  const t = v => typeof v === "string" ? v : "";
+  return {company:t(j?.company), role:t(j?.role), domain:t(j?.domain), summary:t(j?.summary), must_have:arr(j?.must_have), nice_to_have:arr(j?.nice_to_have),
+    what_they_really_want:arr(j?.what_they_really_want), ats_keywords:arr(j?.ats_keywords), red_flags:arr(j?.red_flags), likely_screening_questions:arr(j?.likely_screening_questions)};
+}
+async function runAIReview(resume, job){
+  const key = reportKey;
+  aiState = {key, status:"loading"};
+  controller = new AbortController();
+  $("goBtn").disabled = true; $("stopBtn").hidden = false;
+  setStatus("Your score is ready. The AI recruiter is reviewing your resume…");
+  renderOutput();
+  const base = {resume: resume.slice(0, 15000), job: job.slice(0, 15000)};
+  const ask = async task => parseJSON(await callAI({...base, task}, {signal: controller.signal}));
+  try{
+    const [jd, rec] = await Promise.allSettled([ask("jd"), ask("recruiter")]);
+    if(controller.signal.aborted){ aiState = {key:"", status:"idle"}; setStatus("Stopped."); return; }
+    const ok = x => x.status === "fulfilled";
+    aiState = {key, status: ok(jd) || ok(rec) ? "done" : "error", jd: ok(jd) ? cleanJd(jd.value) : null, recruiter: ok(rec) ? cleanRec(rec.value) : null,
+      error: ok(jd) && ok(rec) ? "" : friendly((ok(jd) ? rec : jd).reason)};
+    setStatus(aiState.status === "done" ? "Done. Your score is calculated from your resume; the recruiter view is an AI opinion." : friendly((ok(jd) ? rec : jd).reason), aiState.status === "error");
+  }catch(e){ aiState = {key, status:"error", error: friendly(e)}; setStatus(friendly(e), true); }
+  finally{ controller = null; $("goBtn").disabled = false; $("stopBtn").hidden = true; if(active === "ats") renderOutput(); }
 }
 function friendly(e){
   const map = {not_granted:"Claude access wasn't allowed for this page. You can allow it from the page's permissions menu.",
@@ -584,13 +728,20 @@ function friendly(e){
 }
 $("goBtn").addEventListener("click", generate);
 $("stopBtn").addEventListener("click", () => controller && controller.abort());
+$("out").addEventListener("click", e => {   // in-report shortcuts: "Rewrite these with AI", "Plan to close the gaps"
+  const b = e.target.closest("[data-go]"); if(!b) return;
+  active = b.dataset.go; store.set("tab", active); setStatus(""); renderTabs(); generate();
+});
 
 function outputText(){
+  if(active === "ats"){
+    if(!report) return "";
+    const a = report;
+    return `ATS readiness: ${a.score}/100 (${a.grade.label}) for ${a.job.title}\n${a.grade.verdict}\n\n` + a.breakdown.map(b => `${b.label}: ${b.points}/${b.weight}`).join("\n") +
+      `\n\nFix first:\n` + a.fixes.slice(0, 7).map(f => `+${f.gain}  ${f.text} ${f.action}`).join("\n") + (a.missing.length ? `\n\nMissing: ${a.missing.join(", ")}` : "");
+  }
   const r = results[active];
-  if(!r) return "";
-  if(r.kind !== "match") return r.data;
-  const m = r.data;
-  return `Match: ${m.score}/100 — ${[m.role,m.company].filter(Boolean).join(" at ")}\n${m.verdict||""}\n\nMeets: ${(m.matched_skills||[]).join(", ")}\nMissing: ${(m.missing_skills||[]).join(", ")}\nKeywords to add: ${(m.keywords_to_add||[]).join(", ")}\n\n${m.advice||""}`;
+  return r ? r.data : "";
 }
 async function copyText(text, btn){
   if(!text){ setStatus("Nothing to copy yet. Generate something first.", true); return; }
@@ -603,7 +754,7 @@ $("copyBtn").addEventListener("click", e => copyText(outputText(), e.currentTarg
 function bindText(id, key, example, tagId){
   const el = $(id), saved = store.get(key, null);
   el.value = saved ?? example;
-  const update = () => { $(id+"Count").textContent = `${el.value.length.toLocaleString()} chars`; $(tagId).hidden = el.value !== example; };
+  const update = () => { scheduleRecompute(); $(id+"Count").textContent = `${el.value.length.toLocaleString()} chars`; $(tagId).hidden = el.value !== example; };
   el.addEventListener("input", () => { store.set(key, el.value); update(); });
   update();
   return update;
@@ -726,13 +877,14 @@ $("trackBody").addEventListener("click", e => {
   pendingDelete = i; renderTracker(); const nb = $("trackBody").querySelector(`[data-del="${i}"]`); nb.textContent = "Confirm"; nb.style.color = "var(--bad)";
 });
 $("saveBtn").addEventListener("click", () => {
-  const m = results.match?.data || {};
+  if(!report) recompute();
+  const jd = aiState.key === reportKey ? aiState.jd : null;
   const firstLine = $("job").value.trim().split("\n")[0].slice(0, 80);
-  const entry = {company: m.company || "", role: m.role || firstLine, score: results.match ? m.score : null,
+  const entry = {company: jd?.company || "", role: jd?.role || report?.job.title || firstLine, score: report ? report.score : null,
     date: new Date().toISOString().slice(0, 10), status: "Saved", url: $("jobUrl").value.trim(),
     letter: results.letter?.data || ""};
   apps.unshift(entry); store.set("apps", apps); renderTracker(); toast("Saved to your tracker.");
-  setStatus(results.match ? "Saved to your tracker." : "Saved. Tip: run the Match report first to fill in company, role and score.");
+  setStatus(report ? "Saved to your tracker." : "Saved. Tip: add your resume and the posting so the ATS score fills in.");
 });
 $("csvBtn").addEventListener("click", e => {
   const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
@@ -741,7 +893,7 @@ $("csvBtn").addEventListener("click", e => {
 });
 
 /* ---------- boot ---------- */
-renderTabs(); renderTracker(); renderEngine();
+recompute(); renderTabs(); renderTracker(); renderEngine();
 (async () => {
   if(window.claude && typeof window.claude.use === "function"){
     try{ claudeSample = await window.claude.use("sample"); }catch{ claudeSample = null; }
