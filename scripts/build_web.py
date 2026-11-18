@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MARKER = "/*PROMPTS*/null"
 API_MARKER = '/*API_URL*/""'
 # URL of the deployed Cloudflare Worker (see worker/). Override with the API_URL env var.
-DEFAULT_API_URL = ""
+DEFAULT_API_URL = "https://job-apply-helper.sushmoi007.workers.dev"
 
 
 def build() -> Path:

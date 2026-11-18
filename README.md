@@ -35,7 +35,7 @@ Paste a job posting and your resume, and get everything you need to apply. Every
    - `CLOUDFLARE_ACCOUNT_ID`
    - `GROQ_API_KEY` (from https://console.groq.com/keys)
 4. Run **Actions → Deploy API (Cloudflare Worker) → Run workflow**. The run summary shows the API URL, for example `https://job-apply-helper.<you>.workers.dev`.
-5. Under **Variables**, add `API_URL` set to that URL. Then re-run **Deploy web app to GitHub Pages**.
+5. The API URL is built into the page (`DEFAULT_API_URL` in `scripts/build_web.py`). To use a different URL, set a repository variable named `API_URL`, then re-run **Deploy web app to GitHub Pages**.
 
 The API is redeployed automatically whenever `worker/` or the prompts change on `main`.
 
