@@ -25,10 +25,16 @@ const req = (b, origin = ORIGIN, ip = "1.1.1.1") =>
     body: JSON.stringify(b),
   });
 
+const SSE_OK = 'data: {"choices":[{"delta":{"content":"Hi"}}]}\n\ndata: [DONE]\n\n';
+const isModels = (url) => String(url).endsWith("/models");
+const modelList = (...ids) => new Response(JSON.stringify({ data: ids.map((id) => ({ id })) }), { status: 200 });
+const DEFAULT_LIST = ["whisper-large-v3", "llama-3.1-8b-instant", "llama-3.3-70b-versatile", "qwen/qwen3-32b"];
+
 let calls = [];
 globalThis.fetch = async (url, init) => {
+  if (isModels(url)) return modelList(...DEFAULT_LIST);
   calls.push({ url, body: JSON.parse(init.body), auth: init.headers.Authorization });
-  return new Response('data: {"choices":[{"delta":{"content":"Hi"}}]}\n\ndata: [DONE]\n\n', { status: 200 });
+  return new Response(SSE_OK, { status: 200 });
 };
 
 test("streams a generated draft and builds the prompt server-side", async () => {
@@ -54,16 +60,18 @@ test("rate limits a single visitor", async () => {
   assert.equal(last.status, 429);
 });
 
-test("falls back to the smaller model when the main one is rate limited", async () => {
-  calls = [];
+test("falls back to the next model when the first is rate limited", async () => {
+  const env2 = { ...env, GROQ_API_KEY: "key-rl" };
+  const tried = [];
   let n = 0;
   globalThis.fetch = async (url, init) => {
-    calls.push(JSON.parse(init.body).model);
+    if (isModels(url)) return modelList(...DEFAULT_LIST);
+    tried.push(JSON.parse(init.body).model);
     return n++ === 0 ? new Response("busy", { status: 429 }) : new Response("data: [DONE]\n\n", { status: 200 });
   };
-  const res = await worker.fetch(req(body, ORIGIN, "3.3.3.3"), env);
+  const res = await worker.fetch(req(body, ORIGIN, "3.3.3.3"), env2);
   assert.equal(res.status, 200);
-  assert.deepEqual(calls, ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]);
+  assert.deepEqual(tried, ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]);
 });
 
 test("health and CORS preflight", async () => {
@@ -74,10 +82,54 @@ test("health and CORS preflight", async () => {
 });
 
 test("reports the upstream status when Groq fails", async () => {
-  globalThis.fetch = async () => new Response(JSON.stringify({ error: { message: "Invalid API Key" } }), { status: 401 });
-  const res = await worker.fetch(req(body, ORIGIN, "4.4.4.4"), env);
+  const env2 = { ...env, GROQ_API_KEY: "key-err" };
+  globalThis.fetch = async (url) =>
+    isModels(url) ? modelList(...DEFAULT_LIST) : new Response(JSON.stringify({ error: { message: "Invalid API Key" } }), { status: 401 });
+  const res = await worker.fetch(req(body, ORIGIN, "4.4.4.4"), env2);
   assert.equal(res.status, 502);
   const { error } = await res.json();
   assert.match(error, /Groq 401: Invalid API Key/);
-  assert.ok(!error.includes("test-key"));
+  assert.ok(!error.includes("key-err"));
+});
+
+test("picks the best live model and skips retired ones (404)", async () => {
+  const env2 = { ...env, GROQ_API_KEY: "key-two" }; // separate key => fresh model cache
+  const tried = [];
+  globalThis.fetch = async (url, init) => {
+    if (isModels(url)) return modelList("llama-3.3-70b-versatile", "openai/gpt-oss-120b", "whisper-large-v3-turbo", "qwen/qwen3-32b");
+    const model = JSON.parse(init.body).model;
+    tried.push(model);
+    return model === "llama-3.3-70b-versatile"
+      ? new Response(JSON.stringify({ error: { message: "model does not exist" } }), { status: 404 })
+      : new Response("data: [DONE]\n\n", { status: 200 });
+  };
+  const res = await worker.fetch(req(body, ORIGIN, "5.5.5.5"), env2);
+  assert.equal(res.status, 200);
+  assert.deepEqual(tried, ["llama-3.3-70b-versatile", "openai/gpt-oss-120b"]);
+});
+
+test("uses only a model that exists when the old one is gone", async () => {
+  const env2 = { ...env, GROQ_API_KEY: "key-new" };
+  const tried = [];
+  globalThis.fetch = async (url, init) => {
+    if (isModels(url)) return modelList("openai/gpt-oss-120b", "openai/gpt-oss-20b", "whisper-large-v3");
+    tried.push(JSON.parse(init.body).model);
+    return new Response("data: [DONE]\n\n", { status: 200 });
+  };
+  const res = await worker.fetch(req(body, ORIGIN, "7.7.7.7"), env2);
+  assert.equal(res.status, 200);
+  assert.deepEqual(tried, ["openai/gpt-oss-120b"]);
+});
+
+test("falls back to built-in models when the model list is unavailable", async () => {
+  const env3 = { ...env, GROQ_API_KEY: "key-three" };
+  const tried = [];
+  globalThis.fetch = async (url, init) => {
+    if (isModels(url)) return new Response("nope", { status: 500 });
+    tried.push(JSON.parse(init.body).model);
+    return new Response("data: [DONE]\n\n", { status: 200 });
+  };
+  const res = await worker.fetch(req(body, ORIGIN, "6.6.6.6"), env3);
+  assert.equal(res.status, 200);
+  assert.deepEqual(tried, ["llama-3.3-70b-versatile"]);
 });

@@ -11,7 +11,36 @@
 import PROMPTS from "../../jobhelper/prompts.json";
 
 const MAX_INPUT = 15000;
-const DEFAULT_MODELS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]; // second is the fallback on rate limits
+// Used only if Groq's model list can't be fetched.
+const FALLBACK_MODELS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
+// Preference order when picking from Groq's live model list (first match wins). Models that print
+// <think> reasoning tags (qwen, deepseek) and non-chat models (whisper, guard, tts...) are excluded.
+const PREFERRED = [/llama-3\.3-70b/, /llama-4-maverick/, /gpt-oss-120b/, /llama-4-scout/, /gpt-oss-20b/, /llama-3\.1-8b/];
+const EXCLUDED = /whisper|guard|tts|orpheus|embed|playai|distil|qwen|deepseek|compound|safeguard|prompt-guard/i;
+
+let modelCache = { key: "", list: null, at: 0 };
+
+export function rankModels(ids) {
+  const usable = ids.filter((id) => !EXCLUDED.test(id) && /llama|gpt-oss/i.test(id));
+  const score = (id) => { const i = PREFERRED.findIndex((re) => re.test(id)); return i === -1 ? PREFERRED.length : i; };
+  return [...usable].sort((x, y) => score(x) - score(y));
+}
+
+async function getModels(env, force = false) {
+  const fresh = modelCache.key === env.GROQ_API_KEY && modelCache.list && Date.now() - modelCache.at < 3600_000;
+  if (fresh && !force) return modelCache.list;
+  let list = null;
+  try {
+    const r = await fetch("https://api.groq.com/openai/v1/models", { headers: { Authorization: `Bearer ${env.GROQ_API_KEY}` } });
+    if (r.ok) {
+      const ranked = rankModels(((await r.json()).data || []).filter((m) => m.active !== false).map((m) => m.id));
+      if (ranked.length) list = ranked;
+    }
+  } catch {}
+  list = list || FALLBACK_MODELS;
+  modelCache = { key: env.GROQ_API_KEY, list, at: Date.now() };
+  return list;
+}
 
 // Best-effort per-isolate limiter, used when the Rate Limiting binding isn't configured.
 const memHits = new Map();
@@ -63,25 +92,30 @@ export function buildPrompt(body) {
 }
 
 async function callGroq(env, prompt) {
-  const models = env.MODEL ? [env.MODEL, ...DEFAULT_MODELS.filter((m) => m !== env.MODEL)] : DEFAULT_MODELS;
-  let last;
-  for (const model of models) {
-    last = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.GROQ_API_KEY}` },
-      body: JSON.stringify({
-        model,
-        temperature: 0.4,
-        stream: true,
-        messages: [
-          { role: "system", content: prompt.system },
-          { role: "user", content: prompt.user },
-        ],
-      }),
-    });
-    if (last.status !== 429 && last.status !== 503) return last;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const discovered = await getModels(env, attempt === 1);
+    const models = [...new Set([env.MODEL, ...discovered].filter(Boolean))].slice(0, 3);
+    let last, sawMissing = false;
+    for (const model of models) {
+      last = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.GROQ_API_KEY}` },
+        body: JSON.stringify({
+          model,
+          temperature: 0.4,
+          stream: true,
+          messages: [
+            { role: "system", content: prompt.system },
+            { role: "user", content: prompt.user },
+          ],
+        }),
+      });
+      if (last.status === 404) { sawMissing = true; continue; }       // model retired: try the next one
+      if (last.status !== 429 && last.status !== 503) return last;     // success or a real error
+    }
+    if (!sawMissing) return last;       // only rate limits: nothing to refresh
   }
-  return last;
+  return new Response(JSON.stringify({ error: { message: "No Groq model is available for this key." } }), { status: 502 });
 }
 
 export default {
