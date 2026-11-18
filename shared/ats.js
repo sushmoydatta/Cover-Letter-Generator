@@ -235,7 +235,9 @@ const DATE_RANGE_RE = new RegExp(
   `((?:${MONTHS})[a-z]*\\.?,?\\s+)?((?:19|20)\\d{2})\\s*(?:-|–|—|to|until)\\s*(?:((?:${MONTHS})[a-z]*\\.?,?\\s+)?((?:19|20)\\d{2})|(present|current|now|ongoing|till\\s+date|today))`,
   "gi",
 );
-const GARBLED_RE = /[-�]|(?:^|\s)[Ā-ɏ§¶¬¦](?=\s)/g;
+// Built from char codes so the source stays plain ASCII: private-use icon glyphs, the replacement char, stray Latin-extended letters and symbols.
+const cc = (n) => String.fromCharCode(n);
+const GARBLED_RE = new RegExp("[" + cc(0xE000) + "-" + cc(0xF8FF) + cc(0xFFFD) + "]|(?:^|\\s)[" + cc(0x100) + "-" + cc(0x24F) + cc(0xA7) + cc(0xB6) + cc(0xAC) + cc(0xA6) + "](?=\\s)", "g");
 
 function headingOf(line) {
   const t = line.trim().replace(/[:：]+$/, "").replace(/^[#*_\s-]+|[*_\s-]+$/g, "");
