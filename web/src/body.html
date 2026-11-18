@@ -1,0 +1,136 @@
+<header class="top">
+  <a class="brand" href="#top" aria-label="Job Apply Helper"><span class="logo" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M4 10.5l3.5 3.5L16 5.5" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="brand-name">Job Apply Helper</span></a>
+  <div class="ticker" id="ticker" aria-live="polite">
+    <span class="tick-score" id="tickScore" aria-label="ATS score">--</span>
+    <span class="tick-delta" id="tickDelta" hidden></span>
+    <span class="tick-title" id="tickTitle">Add your resume and a job</span>
+  </div>
+  <div class="top-actions">
+    <button class="btn small ghost" id="paletteBtn" aria-label="Open command palette"><span class="kbd" id="kbdHint">Ctrl K</span></button>
+    <button class="btn small ghost" id="themeBtn" aria-label="Switch colour theme" title="Theme: system"><span id="themeIcon">Auto</span></button>
+    <span class="chip" id="engineChip"><span class="dot" id="engineDot"></span><span id="engineText">Connecting…</span></span>
+  </div>
+</header>
+
+<main id="top">
+  <div class="desk" id="desk" data-view="job">
+    <section class="pane" id="paneResume" aria-labelledby="resumeH">
+      <div class="pane-head">
+        <div class="step"><b>1</b><h2 id="resumeH">Your resume</h2></div>
+        <div class="row">
+          <span class="tag" id="resumeExample">Example</span>
+          <label class="btn small file-btn">Upload PDF<input type="file" id="resumeFile" accept=".pdf,.txt,.md,text/plain,application/pdf"></label>
+        </div>
+      </div>
+      <div class="pane-body fill">
+        <textarea id="resume" aria-label="Resume text" spellcheck="false"></textarea>
+      </div>
+      <div class="pane-foot">
+        <span class="hint" id="resumeQuality">Saved in this browser only.</span>
+        <span class="count" id="resumeCount"></span>
+      </div>
+    </section>
+
+    <section class="pane" id="paneJob" aria-labelledby="jobH">
+      <div class="pane-head">
+        <div class="step"><b>2</b><h2 id="jobH">The job</h2></div>
+        <span class="tag" id="jobExample">Example</span>
+      </div>
+      <div class="pane-body">
+        <div class="row" id="urlRow">
+          <input type="url" id="jobUrl" placeholder="Paste a job link (https://…)" aria-label="Job posting link">
+          <button class="btn small" id="fetchBtn">Fetch</button>
+        </div>
+        <div class="titlebox" id="titleBox">
+          <label class="field" for="jobTitle">Job position <span class="src" id="titleSrc"></span></label>
+          <input type="text" id="jobTitle" placeholder="e.g. Machine Learning Engineer" autocomplete="off">
+          <input type="text" id="jobCompany" aria-label="Company" placeholder="Company (optional)" autocomplete="off">
+        </div>
+        <p class="note" id="jobNote" hidden></p>
+      </div>
+      <div class="pane-body fill">
+        <textarea id="job" aria-label="Job posting text" spellcheck="false" placeholder="Or paste the whole job page here. We keep only the job description."></textarea>
+      </div>
+      <div class="pane-foot">
+        <span class="row"><button class="btn small" id="trimJob" title="Remove menus, footers and other page text">Keep only the job</button><button class="btn small" id="clearJob">New job</button></span>
+        <span class="count" id="jobCount"></span>
+      </div>
+    </section>
+
+    <section class="pane" id="paneResults" aria-labelledby="resultsH">
+      <div class="pane-head">
+        <div class="step"><b>3</b><h2 id="resultsH">Results</h2></div>
+        <div class="tabs" role="tablist" id="tabs" aria-label="Tools"></div>
+        <div class="opts" id="opts"></div>
+      </div>
+      <div class="pane-body scroll">
+        <div class="out" id="out"></div>
+      </div>
+      <div class="pane-foot actions">
+        <div class="status" id="status" role="status" aria-live="polite"></div>
+        <div class="row">
+          <button class="btn primary" id="goBtn">Generate</button>
+          <button class="btn" id="stopBtn" hidden>Stop</button>
+          <button class="btn small" id="copyBtn">Copy</button>
+          <button class="btn small" id="saveBtn">Save to tracker</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <nav class="mobile-nav" id="mobileNav" aria-label="Switch pane">
+    <button data-view="resume">Resume</button><button data-view="job">Job</button><button data-view="results">Results</button>
+  </nav>
+
+  <section class="board-wrap" id="tracker" aria-labelledby="trackH">
+    <div class="board-head">
+      <div><p class="kicker">Tracker</p><h2 id="trackH">Your applications</h2></div>
+      <div class="row"><button class="btn small" id="addCard">Add manually</button><button class="btn small" id="csvBtn">Copy as CSV</button></div>
+    </div>
+    <div class="pace" aria-label="This week">
+      <div class="week" id="paceWeek"></div>
+      <div><b id="paceCount">0 applications this week</b><span class="note-hand" id="paceNote"></span></div>
+    </div>
+    <div class="due" id="dueStrip" hidden></div>
+    <div class="board" id="board"></div>
+    <p class="empty" id="trackEmpty"><span class="mk-pencil">Nothing here yet, and that's fine.</span>Score a job, then press <b>Save to tracker</b>. Drag cards between columns, or use the Move menu on a card.</p>
+  </section>
+
+  <footer>
+    <span class="by">Built by <em>Sushmoy Datta</em></span>
+    <span class="hint">Drafts are a starting point. Read them before you send. <span class="kbd">Ctrl K</span> opens the command palette.</span>
+    <nav><a href="https://sushmoydatta.github.io" target="_blank" rel="noopener">Portfolio ↗</a><a href="https://github.com/sushmoydatta/Cover-Letter-Generator" target="_blank" rel="noopener">Source ↗</a></nav>
+  </footer>
+</main>
+
+<div class="popover" id="gapPop" role="dialog" aria-label="Fix this gap" hidden></div>
+
+<div class="overlay" id="palette" hidden>
+  <div class="dialog pal" role="dialog" aria-modal="true" aria-label="Command palette">
+    <input id="palInput" type="text" role="combobox" aria-expanded="true" aria-controls="palList" aria-autocomplete="list" placeholder="Type a command…" autocomplete="off" spellcheck="false">
+    <ul id="palList" role="listbox"></ul>
+    <p class="hint pal-foot"><span class="kbd">↑↓</span> move <span class="kbd">Enter</span> run <span class="kbd">Esc</span> close</p>
+  </div>
+</div>
+
+<div class="overlay" id="cardModal" hidden>
+  <form class="dialog" id="cardForm" role="dialog" aria-modal="true" aria-labelledby="cardHeading">
+    <h2 id="cardHeading">Application</h2>
+    <label class="field">Company<input type="text" id="cfCompany" autocomplete="off"></label>
+    <label class="field">Job position<input type="text" id="cfRole" autocomplete="off" required></label>
+    <div class="two-col">
+      <label class="field">Status<select id="cfStatus"></select></label>
+      <label class="field">Follow up on<input type="date" id="cfFollow"></label>
+    </div>
+    <label class="field">Link<input type="url" id="cfUrl" placeholder="https://…"></label>
+    <label class="field">Notes<textarea id="cfNotes" rows="3" placeholder="Recruiter name, next step, salary range…"></textarea></label>
+    <div class="row dlg-actions">
+      <button class="btn primary" type="submit">Save</button>
+      <button class="btn" type="button" id="cfCancel">Close</button>
+      <button class="btn danger" type="button" id="cfDelete">Delete</button>
+    </div>
+  </form>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<canvas id="confetti" aria-hidden="true"></canvas>

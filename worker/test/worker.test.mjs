@@ -8,10 +8,13 @@ import path from "node:path";
 // Load the worker source, swapping the JSON import (bundled by wrangler) for an inline object.
 const here = path.dirname(fileURLToPath(import.meta.url));
 const prompts = readFileSync(path.join(here, "../../jobhelper/prompts.json"), "utf8");
-const engine = readFileSync(path.join(here, "../../shared/ats.js"), "utf8").replace(/^export /gm, "");
+const strip = (t) => t.replace(/^export /gm, "").replace(/^import .*;$/gm, "");
+const jobExtract = strip(readFileSync(path.join(here, "../../shared/jobextract.js"), "utf8"));
+const engine = strip(readFileSync(path.join(here, "../../shared/ats.js"), "utf8"));
 const src = readFileSync(path.join(here, "../src/index.js"), "utf8")
   .replace(/import PROMPTS from .*;/, () => `const PROMPTS = ${prompts};`)
-  .replace(/import \{ analyze \} from .*;/, () => engine);
+  .replace(/import \{ analyze \} from .*;/, () => engine)
+  .replace(/import \{ extractJobFromHtml.*\} from .*;/, () => jobExtract);
 const mod = await import("data:text/javascript;base64," + Buffer.from(src).toString("base64"));
 const worker = mod.default;
 
@@ -218,4 +221,84 @@ test("rewrite and gap-plan tasks take a focus list and refuse to run without one
   assert.match(seen[0], /Worked on stuff/);
   assert.match(seen[0], /never make up a figure/i);
   assert.equal((await worker.fetch(req({ task: "gapplan", resume: RESUME, job: JOB }, ORIGIN, "11.0.0.2"), env2)).status, 400);
+});
+
+/* ------------------------------------------------------------------ /job */
+const { LD_PAGE, PLAIN_PAGE, SPA_SHELL, GREENHOUSE_API } = await import("../../shared/test/jobpages.mjs");
+const jreq = (url, { ip = "20.0.0.1", origin = ORIGIN } = {}) =>
+  new Request("https://api.example/job", { method: "POST", headers: { Origin: origin, "CF-Connecting-IP": ip, "Content-Type": "application/json" }, body: JSON.stringify({ url }) });
+const html = (body, status = 200, headers = {}) => new Response(body, { status, headers: { "Content-Type": "text/html", ...headers } });
+
+test("/job returns only the job posting from a structured-data page", async () => {
+  globalThis.fetch = async () => html(LD_PAGE);
+  const res = await worker.fetch(jreq("https://careers.example-robotics.com/jobs/1"), env);
+  assert.equal(res.status, 200);
+  const j = await res.json();
+  assert.equal(j.title, "Machine Learning Engineer");
+  assert.equal(j.company, "Example Robotics");
+  assert.equal(j.titleFound, true);
+  assert.equal(j.source, "structured-data");
+  assert.ok(!/cookie|Privacy Policy|Sign in/i.test(j.description));
+});
+
+test("/job strips a normal careers page down to the description", async () => {
+  globalThis.fetch = async () => html(PLAIN_PAGE);
+  const j = await (await worker.fetch(jreq("https://jobs.acme-analytics.com/data-analyst", { ip: "20.0.0.2" }), env)).json();
+  assert.equal(j.title, "Data Analyst");
+  assert.match(j.description, /Write SQL queries/);
+  assert.ok(!/Similar jobs|Submit application|Share on|Terms of Use/i.test(j.description));
+});
+
+test("/job uses the Greenhouse JSON API when the link is a Greenhouse posting", async () => {
+  const seen = [];
+  globalThis.fetch = async (url) => { seen.push(String(url)); return new Response(JSON.stringify(GREENHOUSE_API), { status: 200, headers: { "Content-Type": "application/json" } }); };
+  const j = await (await worker.fetch(jreq("https://boards.greenhouse.io/globex/jobs/4012345", { ip: "20.0.0.3" }), env)).json();
+  assert.equal(seen[0], "https://boards-api.greenhouse.io/v1/boards/globex/jobs/4012345");
+  assert.equal(j.title, "Backend Engineer");
+  assert.equal(j.source, "api");
+});
+
+test("/job warns clearly about JavaScript-only pages instead of returning page junk", async () => {
+  globalThis.fetch = async () => html(SPA_SHELL);
+  const j = await (await worker.fetch(jreq("https://careers.spa-company.com/jobs/9", { ip: "20.0.0.4" }), env)).json();
+  assert.equal(j.confidence, "low");
+  assert.ok(j.warnings.some((w) => /JavaScript/.test(w)));
+});
+
+test("/job refuses private, local and odd addresses and never fetches them", async () => {
+  let fetched = 0;
+  globalThis.fetch = async () => { fetched++; return html("x"); };
+  const bad = ["http://localhost/x", "http://127.0.0.1/", "http://10.0.0.5/a", "http://169.254.169.254/latest/meta-data", "http://[::1]/", "http://2130706433/", "http://0x7f000001/",
+    "file:///etc/passwd", "ftp://example.com/x", "https://user:pw@example.com/", "https://example.com:8080/x", "http://intranet/jobs", "http://printer.local/"];
+  for (const [i, u] of bad.entries()) assert.equal((await worker.fetch(jreq(u, { ip: `21.0.0.${i}` }), env)).status, 400, u);
+  assert.equal(fetched, 0);
+});
+
+test("/job re-checks every redirect hop and blocks a redirect to a private address", async () => {
+  globalThis.fetch = async (url) => String(url).includes("evil.example")
+    ? new Response(null, { status: 302, headers: { Location: "http://169.254.169.254/latest/" } })
+    : html(PLAIN_PAGE);
+  const res = await worker.fetch(jreq("https://evil.example.com/jobs/1", { ip: "22.0.0.1" }), env);
+  assert.equal(res.status, 502);
+  assert.match((await res.json()).error, /public|Paste the job text/i);
+  globalThis.fetch = async (url) => String(url).includes("short.example")
+    ? new Response(null, { status: 301, headers: { Location: "https://jobs.acme-analytics.com/final" } })
+    : html(PLAIN_PAGE);
+  const ok = await worker.fetch(jreq("https://short.example.com/x", { ip: "22.0.0.2" }), env);
+  assert.equal(ok.status, 200);
+  assert.equal((await ok.json()).finalUrl, "https://jobs.acme-analytics.com/final");
+});
+
+test("/job handles blocked sites, PDFs, other origins and respects the rate limit", async () => {
+  globalThis.fetch = async () => new Response("Forbidden", { status: 403 });
+  const blocked = await worker.fetch(jreq("https://www.linkedin.com/jobs/view/1", { ip: "23.0.0.1" }), env);
+  assert.equal(blocked.status, 502);
+  assert.match((await blocked.json()).error, /403|Paste the job text/);
+  globalThis.fetch = async () => new Response("%PDF-1.4", { status: 200, headers: { "Content-Type": "application/pdf" } });
+  assert.equal((await worker.fetch(jreq("https://example.com/job.pdf", { ip: "23.0.0.2" }), env)).status, 502);
+  assert.equal((await worker.fetch(jreq("https://example.com/job", { ip: "23.0.0.3", origin: "https://evil.example" }), env)).status, 403);
+  globalThis.fetch = async () => html(PLAIN_PAGE);
+  let last;
+  for (let i = 0; i < 8; i++) last = await worker.fetch(jreq("https://jobs.acme-analytics.com/x", { ip: "23.0.0.9" }), { ...env, RATE_PER_MINUTE: "6" });
+  assert.equal(last.status, 429);
 });

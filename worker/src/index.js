@@ -7,6 +7,10 @@
  *   -> JSON: deterministic ATS report (score, breakdown, keyword evidence, bullet audit, prioritised fixes)
  *      plus, unless llm:false, an AI "posting analysis" and a "recruiter view". The score is computed in code,
  *      never by the model, and is returned even if the AI part fails.
+ * POST /job       {url}
+ *   -> the job posting only {title, company, location, description, source, confidence, warnings}.
+ *      Prefers schema.org JobPosting data and the Greenhouse/Lever JSON APIs; otherwise strips the page
+ *      (menus, cookie banners, footers, related jobs) down to the job description.
  * GET  /health    -> {ok:true}
  *
  * Prompts are built here from jobhelper/prompts.json, so the endpoint only does the
@@ -14,6 +18,7 @@
  */
 import PROMPTS from "../../jobhelper/prompts.json";
 import { analyze } from "../../shared/ats.js";
+import { extractJobFromHtml, apiUrlFor, parseApiJob } from "../../shared/jobextract.js";
 
 const MAX_INPUT = 15000;
 // Used only if Groq's model list can't be fetched.
@@ -128,6 +133,82 @@ async function callGroq(env, prompt, { stream = true, temperature = 0.4 } = {}) 
 }
 
 
+/* ------------------------------------------------------------------ /job: safe page fetching */
+const MAX_PAGE_BYTES = 1_500_000;
+
+/** Only public http(s) pages on the default ports. Blocks localhost, private/link-local IPs and odd IP spellings. */
+export function assertPublicUrl(input) {
+  let u;
+  try { u = new URL(String(input).trim()); } catch { throw new Error("That does not look like a valid link."); }
+  if (!["http:", "https:"].includes(u.protocol)) throw new Error("Only http and https links are supported.");
+  if (u.username || u.password) throw new Error("Links with a username or password are not supported.");
+  if (u.port && !["80", "443"].includes(u.port)) throw new Error("Only standard web ports are supported.");
+  const host = u.hostname.toLowerCase().replace(/\.$/, "");
+  const bad = !host.includes(".") || host.includes(":") || host.startsWith("[")
+    || /^(localhost|.*\.(local|localhost|internal|lan|home|corp|intranet))$/.test(host)
+    || /^[0-9.]+$/.test(host) || /^0x[0-9a-f]+$/i.test(host);          // any numeric host (IPv4 in any spelling) is refused
+  if (bad) throw new Error("That address is not a public website.");
+  return u;
+}
+
+async function readLimited(res, limit = MAX_PAGE_BYTES) {
+  const reader = res.body?.getReader?.();
+  if (!reader) return (await res.text()).slice(0, limit);
+  const dec = new TextDecoder();
+  let out = "", bytes = 0;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    bytes += value.length;
+    out += dec.decode(value, { stream: true });
+    if (bytes >= limit) { try { await reader.cancel(); } catch {} break; }
+  }
+  return out;
+}
+
+async function safeFetch(urlStr, { json = false } = {}) {
+  let url = assertPublicUrl(urlStr);
+  for (let hop = 0; hop < 4; hop++) {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 9000);
+    let res;
+    try {
+      res = await fetch(url.toString(), {
+        redirect: "manual", signal: ctl.signal,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; JobApplyHelper/2.0; +https://github.com/sushmoydatta/Cover-Letter-Generator)",
+          Accept: json ? "application/json" : "text/html,application/xhtml+xml",
+          "Accept-Language": "en",
+        },
+      });
+    } finally { clearTimeout(timer); }
+    if (res.status >= 300 && res.status < 400 && res.headers.get("Location")) {
+      url = assertPublicUrl(new URL(res.headers.get("Location"), url).toString());   // every hop is re-validated
+      continue;
+    }
+    if (!res.ok) throw new Error(`The site answered with status ${res.status}.`);
+    const type = (res.headers.get("Content-Type") || "").toLowerCase();
+    if (type.includes("pdf")) throw new Error("This link is a PDF. Paste the job text instead.");
+    return { text: await readLimited(res), finalUrl: url.toString() };
+  }
+  throw new Error("Too many redirects.");
+}
+
+export async function readJob(urlStr) {
+  assertPublicUrl(urlStr);
+  const api = apiUrlFor(urlStr);
+  if (api) {
+    try {
+      const { text } = await safeFetch(api.url, { json: true });
+      const job = parseApiJob(api.kind, JSON.parse(text));
+      if (job && job.title && job.description.length >= 150) return { ...job, source: "api", confidence: "high", warnings: [], finalUrl: urlStr };
+    } catch {}   // fall through to the page itself
+  }
+  const page = await safeFetch(urlStr);
+  const job = extractJobFromHtml(page.text);
+  return { ...job, description: job.description.slice(0, 20000), finalUrl: page.finalUrl };
+}
+
 function parseJsonLoose(text) {
   const t = String(text).trim().replace(/^```(?:json)?\s*|\s*```$/gi, "");
   try { return JSON.parse(t); } catch {}
@@ -170,7 +251,7 @@ export default {
     const cors = corsHeaders(req, env);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: (({ _ok, ...h }) => h)(cors) });
     if (url.pathname === "/health") return json({ ok: true, configured: !!env.GROQ_API_KEY }, 200, cors);
-    if (!["/generate", "/analyze"].includes(url.pathname) || req.method !== "POST") return json({ error: "Not found" }, 404, cors);
+    if (!["/generate", "/analyze", "/job"].includes(url.pathname) || req.method !== "POST") return json({ error: "Not found" }, 404, cors);
     if (!cors._ok) return json({ error: "This site is not allowed to use the API." }, 403, cors);
     if (!env.GROQ_API_KEY) return json({ error: "The service is not configured yet." }, 503, cors);
 
@@ -181,6 +262,18 @@ export default {
       if (!success) return json({ error: "Too many requests. Please wait a minute and try again." }, 429, cors);
     } else if (memLimited(ip, perMinute, 60_000)) {
       return json({ error: "Too many requests. Please wait a minute and try again." }, 429, cors);
+    }
+
+    if (url.pathname === "/job") {
+      let link;
+      try { link = JSON.parse(await req.text()).url; assertPublicUrl(link); } catch (e) { return json({ error: e.message?.startsWith("That") || e.message?.startsWith("Only") || e.message?.startsWith("Links") ? e.message : "Send a JSON body like {\"url\": \"https://...\"}." }, 400, cors); }
+      try {
+        const job = await readJob(link);
+        return json({ ...job, titleFound: !!job.title }, 200, cors);
+      } catch (e) {
+        const msg = /status|PDF|redirect|public|valid|supported/i.test(e.message || "") ? e.message : "We could not open that page (it may block automated readers).";
+        return json({ error: `${msg} Paste the job text instead.` }, 502, cors);
+      }
     }
 
     if (url.pathname === "/analyze") {

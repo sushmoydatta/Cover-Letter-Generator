@@ -13,7 +13,7 @@ jobs:
         with:
           node-version: 22
       - name: Test worker
-        run: node --test shared/test/ats.test.mjs worker/test/worker.test.mjs
+        run: node --test shared/test/ats.test.mjs shared/test/jobextract.test.mjs worker/test/worker.test.mjs
       - name: Check Cloudflare secrets are set
         id: check
         env:

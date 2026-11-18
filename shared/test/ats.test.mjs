@@ -128,3 +128,25 @@ test("'Python and SQL' are both required (not alternatives)", () => {
   assert.equal(g("SQL"), null);
   assert.ok(g("Tableau") && g("Tableau") === g("Power BI") && g("Power BI") === g("Excel"));
 });
+
+test("hard rule: the job title shown with the score is the extracted or confirmed title, never a menu line", async () => {
+  const { PASTED_PAGE } = await import("./jobpages.mjs");
+  const a = analyze(GOOD_RESUME, PASTED_PAGE, { now: NOW });
+  assert.equal(a.job.title, "Software Engineer, Network Analytics");
+  assert.equal(a.job.titleFound, true);
+  const typed = analyze(GOOD_RESUME, PASTED_PAGE, { now: NOW, jobTitle: "Senior Data Engineer | Example Telecom" });
+  assert.equal(typed.job.title, "Senior Data Engineer");           // user-confirmed title wins, cleaned
+  assert.equal(typed.job.seniority, "Senior");
+  const none = analyze(GOOD_RESUME, "Responsibilities\nBuild things in Python and SQL for our analytics team every single day of the week.", { now: NOW });
+  assert.equal(none.job.title, "");
+  assert.equal(none.job.titleFound, false);                         // the UI must ask for it
+});
+
+test("ignored skills are removed from the score and reported", () => {
+  const base = analyze(GOOD_RESUME, ML_JOB, { now: NOW });
+  const ign = analyze(GOOD_RESUME, ML_JOB, { now: NOW, ignore: ["Docker", "AWS", "GCP"] });
+  assert.ok(!ign.keywords.some((k) => ["Docker", "AWS", "GCP"].includes(k.skill)));
+  assert.deepEqual(ign.ignored.sort(), ["AWS", "Docker", "GCP"]);
+  assert.ok(ign.score >= base.score);
+  assert.ok(!ign.missingMust.includes("Docker"));
+});

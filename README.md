@@ -12,7 +12,15 @@ Paste a job posting and your resume, and get everything you need to apply. Every
 | **Recruiter outreach** | A LinkedIn note under 300 characters, a recruiter email, a referral request and a follow-up |
 | **Interview prep** | Likely questions with talking points from your resume, the tough spots, and questions to ask them |
 | **Application question** | An answer to any form question, such as "Why do you want to work here?" |
-| **Tracker** | Saved applications with a status for each (Saved → Applied → Interviewing → Offer / Rejected) |
+| **Kanban tracker** | Drag cards between Saved, Applied, Interviewing, Offer and Rejected (or use the Move menu on touch screens). Follow-up reminders are set when you apply. Notes, links, CSV export |
+
+## The workbench
+
+- **Three panes:** resume, job and results side by side at equal height (stacked on tablets, one pane at a time with a bottom switcher on phones).
+- **Live score:** the top bar always shows the ATS score and **the job position it is for**. It updates as you type, with a +/- change chip. If the position can't be found, the app asks for it and won't save to the tracker or run AI tools until it's filled in.
+- **Click to fix:** click any skill gap to add it to your Skills, insert a bullet template to finish with your real result, find it in the posting, or ignore it for this job.
+- **Command palette:** `Ctrl K` / `Cmd K` runs anything (open a tool, new job, save, switch theme, follow-ups). `Ctrl Enter` generates.
+- **Only the job, not the page:** paste a whole careers page and the app keeps just the job description (with Undo). Pasting a link uses the backend job reader, which prefers the page's structured job data (schema.org `JobPosting`) and the Greenhouse and Lever JSON APIs, then falls back to stripping menus, cookie banners, footers and related jobs. Sites that build their content with JavaScript or block automated readers can't be read from a link; paste the text instead.
 
 ## Use it in the browser
 
@@ -79,8 +87,9 @@ jobhelper/
   sources.py     # job page fetching and resume loading (PDF/TXT/MD/CSV)
   config.py      # provider settings from env / .env
   cli.py         # `jobhelper` command
-web/app.html     # the web app (prompts and API URL are injected at build time)
-shared/ats.js    # ATS / recruiter scoring engine (runs in the browser, the Worker and tests)
+web/src/         # the web app: head.html, base.css, layout.css, body.html, js/*.js (joined by the build)
+shared/ats.js          # ATS / recruiter scoring engine (runs in the browser, the Worker and tests)
+shared/jobextract.js   # job-posting extractor: title, company, description only (browser, Worker, tests)
 worker/          # Cloudflare Worker API that keeps the Groq key server-side
 scripts/build_web.py
 tests/           # pytest suite (no network; the LLM is mocked)
@@ -100,7 +109,7 @@ notebooks/exploration.ipynb   # original prototype
 ```bash
 pip install -e ".[dev]"
 pytest -q
-node --test shared/test/ats.test.mjs worker/test/worker.test.mjs
+node --test shared/test/ats.test.mjs shared/test/jobextract.test.mjs worker/test/worker.test.mjs
 python scripts/build_web.py && python -m http.server -d dist 8000
 ```
 

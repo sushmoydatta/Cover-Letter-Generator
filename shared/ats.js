@@ -15,6 +15,8 @@
 /* ------------------------------------------------------------------ skills taxonomy */
 // "Canonical|category|alias,alias". A leading "~" means the canonical word is too ambiguous to match
 // on its own (e.g. "Go", "R", "C"), so only the aliases are matched.
+import { cleanTitle, titleFromText } from "./jobextract.js";
+
 const SKILL_DEFS = `
 Python|lang|py,python3
 Java|lang|
@@ -366,10 +368,13 @@ const SENIORITY = [
 ];
 const SENIORITY_YEARS = { Intern: 0, "Entry level": 1, Mid: 3, Senior: 5, Management: 8 };
 
-export function parseJob(text) {
+export function parseJob(text, titleOverride = "") {
   const raw = String(text || "").replace(/\r/g, "");
   const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
-  const title = (lines[0] || "").replace(/\s*[(|@–—-].*$/, "").slice(0, 90).trim();
+  // The title is never guessed from "the first line": it is the confirmed title, or one the extractor is sure of, or "".
+  const given = cleanTitle(titleOverride).title;
+  const title = given || titleFromText(raw);
+  const titleFound = !!title;
 
   const importance = new Map(); // skill -> {tier:"must"|"core"|"nice", count}
   const tierRank = { nice: 1, core: 2, must: 3 };
@@ -429,7 +434,7 @@ export function parseJob(text) {
   }
   const orEquivalent = /(or equivalent|equivalent (practical )?experience|or related)/i.test(raw);
 
-  return { title, skills, yearsRequired, seniority, seniorityLevel, degreeRequired, degreePreferred, orEquivalent, text: raw, lines };
+  return { title, titleFound, skills, yearsRequired, seniority, seniorityLevel, degreeRequired, degreePreferred, orEquivalent, text: raw, lines };
 }
 
 /* ------------------------------------------------------------------ bullet quality */
@@ -493,7 +498,11 @@ function relatedOf(skill, resumeSkills) {
 export function analyze(resumeText, jobText, opts = {}) {
   const now = opts.now || new Date();
   const resume = parseResume(resumeText, now);
-  const job = parseJob(jobText);
+  const job = parseJob(jobText, opts.jobTitle);
+  // Skills the user marked "not for me / ignore for this job" are left out of the score and reported separately.
+  const ignoreSet = new Set(opts.ignore || []);
+  const ignored = job.skills.filter((s) => ignoreSet.has(s.name)).map((s) => s.name);
+  if (ignored.length) job.skills = job.skills.filter((s) => !ignoreSet.has(s.name));
   const lower = resume.text.toLowerCase();
   const resumeSkills = findSkills(resume.text);
   const proofText = [resume.sectionText.experience, resume.sectionText.projects, resume.sectionText.summary].join("\n") ||
@@ -599,10 +608,10 @@ export function analyze(resumeText, jobText, opts = {}) {
   const breakdown = parts.map(([key, label, raw]) => ({ key, label, weight: WEIGHTS[key], ratio: round1(clamp(raw) * 100) / 100, points: round1(clamp(raw) * WEIGHTS[key]) }));
   const total = Math.round(breakdown.reduce((a, b) => a + b.points, 0));
 
-  const grade = total >= 85 ? { label: "Excellent", verdict: "Likely to clear automated screening and reach a recruiter." }
-    : total >= 70 ? { label: "Strong", verdict: "Should pass most automated screens. A few fixes will lift it further." }
-    : total >= 55 ? { label: "Fair", verdict: "Borderline. It could be filtered out; the fixes below matter." }
-    : { label: "Needs work", verdict: "At risk of being filtered out before a human reads it." };
+  const grade = total >= 85 ? { label: "Excellent", verdict: "A strong match. Your resume should read clearly to ATS software and to a recruiter." }
+    : total >= 70 ? { label: "Strong", verdict: "A good match. A few fixes will lift it further." }
+    : total >= 55 ? { label: "Fair", verdict: "A partial match. The fixes below matter most." }
+    : { label: "Needs work", verdict: "A weak match for this posting. Start with the top fixes." };
 
   /* explanations + prioritised fixes -------------------------------------- */
   const detail = {
@@ -658,7 +667,8 @@ export function analyze(resumeText, jobText, opts = {}) {
     fixes: picked.slice(0, 14),
     format: fmt.map((f) => ({ label: f.label, ok: f.got === f.pts, points: f.got, max: f.pts, tip: f.got === f.pts ? "" : f.tip })),
     bullets: { total: n, average: n ? Math.round(audit.reduce((a, b) => a + b.score, 0) / n) : 0, withMetrics: Math.round(metricRatio * 100), withVerbs: Math.round(verbRatio * 100), audit: worst, weakest: worst.filter((b) => b.score < 70).slice(0, 8) },
-    job: { title: job.title, seniority: job.seniority, yearsRequired: job.yearsRequired, degreeRequired: job.degreeRequired },
+    ignored,
+    job: { title: job.title, titleFound: job.titleFound, seniority: job.seniority, yearsRequired: job.yearsRequired, degreeRequired: job.degreeRequired },
     candidate: { name: resume.name, years: resume.years, degree: resume.degree.label, contact: resume.contact, wordCount: resume.wordCount, sections: Object.keys(resume.sections) },
     missing,
     missingMust,
