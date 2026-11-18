@@ -1,0 +1,612 @@
+<title>Job Apply Helper</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Paste a job posting and your resume. Get a match score, a tailored cover letter, resume tweaks, recruiter messages and interview prep, all grounded in your real experience.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a two-pane desk. Left pane holds the two source documents (resume, posting); right pane is the workbench where each tool produces a draft. Tracker sits below as a ledger. */
+:root{
+  --bg:#f4f6f8; --surface:#ffffff; --sunk:#eaeef2; --line:#d5dce3;
+  --fg:#14202b; --muted:#5a6876; --accent:#0d6e63; --accent-fg:#ffffff; --accent-soft:#d9efeb;
+  --good:#1f7a3a; --warn:#a15c00; --bad:#b3261e; --good-soft:#e1f2e6; --warn-soft:#fbeed9; --bad-soft:#f9e0de;
+  --display:"Bricolage Grotesque","Space Grotesk",system-ui,sans-serif;
+  --body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f161c; --surface:#17212a; --sunk:#111a21; --line:#2a3946;
+  --fg:#e4ebf0; --muted:#93a3b1; --accent:#4cc2b0; --accent-fg:#06201c; --accent-soft:#163a35;
+  --good:#6fd08c; --warn:#f0b257; --bad:#ff8a80; --good-soft:#173525; --warn-soft:#3a2b14; --bad-soft:#3d1d1b;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f161c; --surface:#17212a; --sunk:#111a21; --line:#2a3946;
+  --fg:#e4ebf0; --muted:#93a3b1; --accent:#4cc2b0; --accent-fg:#06201c; --accent-soft:#163a35;
+  --good:#6fd08c; --warn:#f0b257; --bad:#ff8a80; --good-soft:#173525; --warn-soft:#3a2b14; --bad-soft:#3d1d1b;
+  color-scheme:dark}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+.wrap{max-width:1240px;margin:0 auto}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.2}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding-block:22px 18px}
+.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.brand h1{font-size:1.65rem;font-weight:700;letter-spacing:-.01em}
+.brand p{margin:0;color:var(--muted);font-size:.92rem}
+.engine{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 11px;font-size:.82rem;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.dot.on{background:var(--good)} .dot.off{background:var(--warn)}
+
+.grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.panel-head h2{font-size:1.08rem;font-weight:700}
+.eyebrow{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.hint{color:var(--muted);font-size:.85rem;margin:0}
+.tag{font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:var(--warn-soft);color:var(--warn)}
+textarea,input[type=text],input[type=password],input[type=url],select{width:100%;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+textarea{resize:vertical;min-height:180px;font-size:.88rem;line-height:1.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row > input:not([type=checkbox]){flex:1 1 200px;min-width:0}
+.hint a{color:var(--accent)}
+label.field{display:flex;flex-direction:column;gap:4px;font-size:.85rem;font-weight:500;min-width:0}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:500;font-size:.9rem;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:600}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.small{padding:5px 10px;font-size:.82rem}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.file-btn{position:relative;overflow:hidden}
+.file-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.count{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+
+.tabs{min-width:0;display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin:-4px -4px 0;padding:0 4px;scrollbar-width:thin}
+.tab{border:0;background:none;padding:10px 12px;cursor:pointer;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;font-size:.9rem}
+.tab[aria-selected=true]{color:var(--fg);border-bottom-color:var(--accent)}
+.opts{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.opts > label{flex:1 1 180px}
+.out{background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:16px 18px;min-height:220px;overflow-wrap:anywhere}
+.out.plain{white-space:pre-wrap}
+.out h2{font-size:1.02rem;margin:18px 0 6px} .out h2:first-child{margin-top:0}
+.out h3{font-size:.95rem;margin:14px 0 4px}
+.out p{margin:0 0 10px} .out ul{margin:0 0 10px;padding-left:20px} .out li{margin:3px 0}
+.out em{color:var(--muted)}
+.status{font-size:.85rem;color:var(--muted);min-height:1.3em}
+.status.err{color:var(--bad)}
+.example-note{font-size:.8rem;color:var(--warn);font-weight:500}
+
+.match{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:center}
+@media (max-width:520px){.match{grid-template-columns:minmax(0,1fr)}}
+.dial{width:108px;height:108px;position:relative}
+.dial svg{width:100%;height:100%;transform:rotate(-90deg)}
+.dial .num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--mono);font-size:1.6rem;line-height:1}
+.dial .num small{font-size:.68rem;color:var(--muted);margin-top:4px;font-family:var(--body)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
+.chips span{font-size:.8rem;padding:3px 9px;border-radius:999px}
+.chips.good span{background:var(--good-soft);color:var(--good)}
+.chips.bad span{background:var(--bad-soft);color:var(--bad)}
+.chips.kw span{background:var(--accent-soft);color:var(--accent)}
+
+details.settings{border-top:1px solid var(--line);padding-top:10px}
+details.settings summary{cursor:pointer;font-weight:600;font-size:.9rem}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px}
+
+.ledger{overflow-x:auto;min-width:0}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:640px}
+th,td{position:relative;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+td select{padding:4px 6px;font-size:.84rem}
+.pill{display:inline-block;font-size:.78rem;padding:2px 8px;border-radius:999px;font-weight:600}
+.empty{color:var(--muted);font-size:.9rem;padding:14px 0}
+footer{color:var(--muted);font-size:.82rem;margin-top:28px;display:flex;flex-wrap:wrap;gap:6px 18px}
+footer a{color:var(--accent)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion:no-preference){.dial circle.val{transition:stroke-dashoffset .6s ease}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Job Apply Helper</h1>
+      <p>Tailor every application to the posting, using only what's on your resume.</p>
+    </div>
+    <div class="engine"><span class="chip" id="engineChip"><span class="dot" id="engineDot"></span><span id="engineText">Checking AI engine…</span></span></div>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+      <section class="panel" aria-labelledby="resumeH">
+        <div class="panel-head">
+          <div><div class="eyebrow">Step 1</div><h2 id="resumeH">Your resume</h2></div>
+          <div class="row">
+            <span class="tag" id="resumeExample">Example</span>
+            <label class="btn small file-btn">Upload PDF / TXT<input type="file" id="resumeFile" accept=".pdf,.txt,.md,text/plain,application/pdf"></label>
+          </div>
+        </div>
+        <textarea id="resume" aria-label="Resume text" spellcheck="false"></textarea>
+        <div class="row" style="justify-content:space-between"><span class="hint">Saved in this browser only. Never uploaded anywhere except the AI request.</span><span class="count" id="resumeCount"></span></div>
+      </section>
+
+      <section class="panel" aria-labelledby="jobH">
+        <div class="panel-head">
+          <div><div class="eyebrow">Step 2</div><h2 id="jobH">Job posting</h2></div>
+          <span class="tag" id="jobExample">Example</span>
+        </div>
+        <div class="row" id="urlRow">
+          <input type="url" id="jobUrl" placeholder="https://careers.company.com/jobs/123" aria-label="Job posting URL">
+          <button class="btn" id="fetchBtn">Fetch</button>
+        </div>
+        <p class="hint" id="urlHint">Paste the full posting text below, or fetch it from a link.</p>
+        <textarea id="job" aria-label="Job posting text" spellcheck="false"></textarea>
+        <div class="row" style="justify-content:space-between"><button class="btn small" id="clearJob">Clear for a new job</button><span class="count" id="jobCount"></span></div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel" aria-labelledby="toolsH">
+        <div class="panel-head">
+          <div><div class="eyebrow">Step 3</div><h2 id="toolsH">Generate</h2></div>
+        </div>
+        <div class="tabs" role="tablist" id="tabs"></div>
+        <div class="opts" id="opts"></div>
+        <div class="row">
+          <button class="btn primary" id="goBtn">Generate</button>
+          <button class="btn" id="stopBtn" hidden>Stop</button>
+          <button class="btn" id="copyBtn">Copy</button>
+          <button class="btn" id="saveBtn">Save to tracker</button>
+        </div>
+        <div class="status" id="status" role="status" aria-live="polite"></div>
+        <div class="out" id="out"></div>
+
+        <details class="settings" id="settingsBox">
+          <summary>AI settings</summary>
+          <p class="hint" id="settingsNote" style="margin-top:8px"></p>
+          <div class="settings-grid" id="keyFields">
+            <label class="field">Provider
+              <select id="provider">
+                <option value="groq">Groq (free tier)</option>
+                <option value="openai">OpenAI</option>
+                <option value="openrouter">OpenRouter</option>
+                <option value="custom">Custom (OpenAI-compatible)</option>
+              </select>
+            </label>
+            <label class="field">API key <input type="password" id="apiKey" autocomplete="off" placeholder="gsk_…"></label>
+            <label class="field">Model <input type="text" id="model"></label>
+            <label class="field" id="baseUrlField" hidden>Base URL <input type="url" id="baseUrl" placeholder="https://host/v1"></label>
+          </div>
+          <label class="row hint" style="margin-top:10px" id="rememberRow"><input type="checkbox" id="rememberKey"> Remember the key in this browser</label>
+        </details>
+      </section>
+    </div>
+  </div>
+
+  <section class="panel" style="margin-top:20px" aria-labelledby="trackH">
+    <div class="panel-head">
+      <div><div class="eyebrow">Ledger</div><h2 id="trackH">Applications tracker</h2></div>
+      <div class="row"><span class="hint" id="trackStats"></span><button class="btn small" id="csvBtn">Copy as CSV</button></div>
+    </div>
+    <div class="ledger"><table>
+      <thead><tr><th>Company</th><th>Role</th><th>Match</th><th>Saved</th><th>Status</th><th>Link</th><th><span class="sr">Actions</span></th></tr></thead>
+      <tbody id="trackBody"></tbody>
+    </table></div>
+    <p class="empty" id="trackEmpty">No applications yet. Generate a match report or cover letter, then press <b>Save to tracker</b>.</p>
+  </section>
+
+  <footer>
+    <span>Outputs are drafts: read and edit before sending.</span>
+    <span>Open source: <a href="https://github.com/sushmoydatta/Cover-Letter-Generator" target="_blank" rel="noopener">GitHub</a></span>
+  </footer>
+</div>
+
+<script>
+const PROMPTS = /*PROMPTS*/null;
+
+const EXAMPLE_RESUME = `Alex Rivera
+alex.rivera@example.com | linkedin.com/in/alex-rivera-example
+
+EDUCATION
+M.Tech, Electronics & Communication Engineering, Example Institute of Technology (2024 - present)
+B.Tech, Electronics & Communication Engineering, Example University (2018 - 2022)
+
+SKILLS
+Python, SQL, C/C++, Verilog, MATLAB, scikit-learn, PyTorch, Xilinx Vivado, Git
+
+EXPERIENCE
+Teaching Assistant, Basic Electronics Lab (2024 - present)
+- Supervised weekly lab sessions for 60+ undergraduates; wrote troubleshooting guides.
+Business Development Intern, Example Corp (2023)
+- Researched 200+ prospective B2B clients; built a lead-scoring spreadsheet used by sales.
+
+PROJECTS
+- Online learning for IRS element selection (thesis): FTRL and FTPL bandit algorithms in Python; lower regret than a greedy baseline in simulation.
+- MIPS32 processor: 5-stage pipelined CPU in Verilog, verified on an FPGA.`;
+
+const EXAMPLE_JOB = `Machine Learning Engineer, Graduate (Example Robotics, Bengaluru)
+
+About the role: You'll build and deploy models that help our warehouse robots plan routes and detect obstacles.
+
+Requirements:
+- Degree in CS, ECE or a related field (Master's preferred)
+- Strong Python; experience with PyTorch or TensorFlow
+- Solid grasp of ML fundamentals, including online / reinforcement learning
+- Familiarity with embedded or FPGA deployment is a plus
+- Experience with Docker and cloud (AWS/GCP)
+- Clear written communication`;
+
+const EXAMPLE_MATCH = {company:"Example Robotics",role:"Machine Learning Engineer, Graduate",score:72,
+  verdict:"Strong ML and hardware fundamentals; missing production tooling the posting asks for.",
+  matched_skills:["Python","PyTorch","Online learning","FPGA deployment","ECE Master's"],
+  missing_skills:["Docker","AWS/GCP"],
+  keywords_to_add:["online learning","bandit algorithms","FPGA"],
+  strengths:["Thesis on FTRL/FTPL bandits maps directly to online learning","Verilog CPU shows embedded/FPGA depth"],
+  gaps:["No Docker or cloud shown: mention a small project you can containerise before interviewing"],
+  advice:"Lead with the thesis in your first paragraph, and add 'online learning' to your skills line."};
+
+/* ---------- storage (per-browser convenience; always optional) ---------- */
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem("jah:"+k); return v===null ? d : JSON.parse(v); }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem("jah:"+k, JSON.stringify(v)); }catch{} },
+  del(k){ try{ localStorage.removeItem("jah:"+k); }catch{} }
+};
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ---------- AI engine ---------- */
+const PROVIDERS = {
+  groq:{url:"https://api.groq.com/openai/v1", model:"llama-3.3-70b-versatile", ph:"gsk_…", keyUrl:"https://console.groq.com/keys"},
+  openai:{url:"https://api.openai.com/v1", model:"gpt-4o-mini", ph:"sk-…", keyUrl:"https://platform.openai.com/api-keys"},
+  openrouter:{url:"https://openrouter.ai/api/v1", model:"meta-llama/llama-3.3-70b-instruct", ph:"sk-or-…", keyUrl:"https://openrouter.ai/keys"},
+  custom:{url:"", model:"", ph:"key (optional)"}
+};
+let claudeSample = null;
+let sessionKey = "";
+
+function cfg(){
+  const p = $("provider").value;
+  return {provider:p, key:$("apiKey").value.trim(), model:$("model").value.trim() || PROVIDERS[p].model,
+          url:(p==="custom" ? $("baseUrl").value.trim() : PROVIDERS[p].url).replace(/\/$/,"")};
+}
+function engineReady(){ if(claudeSample) return true; const c = cfg(); return !!c.url && (!!c.key || c.provider==="custom"); }
+
+function renderEngine(){
+  const dot = $("engineDot"), txt = $("engineText");
+  if(claudeSample){
+    dot.className="dot on"; txt.textContent="Using your Claude account";
+    $("settingsNote").textContent="Running on claude.ai: requests use your own Claude plan, so no API key is needed.";
+    $("keyFields").hidden = true; $("rememberRow").hidden = true; $("settingsBox").open = false;
+    $("urlRow").hidden = true; $("urlHint").textContent = "Copy the full job posting from the careers page and paste it below.";
+    return;
+  }
+  $("keyFields").hidden = false; $("rememberRow").hidden = false;
+  const p = PROVIDERS[$("provider").value];
+  const link = p.keyUrl ? ` Get a free key at <a href="${p.keyUrl}" target="_blank" rel="noopener">${new URL(p.keyUrl).host}</a>.` : "";
+  $("settingsNote").innerHTML = "Your key stays in your browser and is sent only to the provider you pick." + link;
+  if(engineReady()){ dot.className="dot on"; txt.textContent = `${$("provider").selectedOptions[0].textContent.replace(/ \(.*\)/,"")} · ${cfg().model}`; }
+  else { dot.className="dot off"; txt.textContent="Add an API key in AI settings"; }
+}
+
+async function callLLM(system, user, {onText, signal} = {}){
+  if(claudeSample){
+    const res = await claudeSample(`${system}\n\n${user}`, {onText: ({text}) => onText && onText(text), signal, modelTier:"default", cache:false});
+    return res.text;
+  }
+  const c = cfg();
+  if(!engineReady()) throw new Error("Add an API key in AI settings below (Groq has a free tier).");
+  const headers = {"Content-Type":"application/json"};
+  if(c.key) headers.Authorization = "Bearer " + c.key;
+  const resp = await fetch(c.url + "/chat/completions", {method:"POST", headers, signal,
+    body: JSON.stringify({model:c.model, temperature:0.4, stream:true,
+      messages:[{role:"system",content:system},{role:"user",content:user}]})});
+  if(!resp.ok){
+    let msg = await resp.text().catch(()=> "");
+    try{ msg = JSON.parse(msg).error.message; }catch{}
+    if(resp.status===401) msg = "The API key was rejected. Check it in AI settings.";
+    if(resp.status===429) msg = "Rate limit reached. Wait a minute and try again. " + msg;
+    throw new Error(msg || `Request failed (${resp.status})`);
+  }
+  const reader = resp.body.getReader(), dec = new TextDecoder();
+  let buf = "", text = "";
+  for(;;){
+    const {value, done} = await reader.read(); if(done) break;
+    buf += dec.decode(value, {stream:true});
+    const lines = buf.split("\n"); buf = lines.pop();
+    for(const line of lines){
+      const l = line.trim(); if(!l.startsWith("data:")) continue;
+      const data = l.slice(5).trim(); if(data==="[DONE]") continue;
+      try{ const d = JSON.parse(data).choices?.[0]?.delta?.content; if(d){ text += d; onText && onText(text); } }catch{}
+    }
+  }
+  return text.trim();
+}
+
+function parseJSON(text){
+  const t = text.trim().replace(/^```(?:json)?\s*|\s*```$/gi, "");
+  try{ return JSON.parse(t); }catch{}
+  const a = t.indexOf("{"), b = t.lastIndexOf("}");
+  if(a !== -1 && b > a){ try{ return JSON.parse(t.slice(a, b+1)); }catch{} }
+  throw new Error("The model's reply wasn't valid JSON. Press Generate again.");
+}
+
+/* ---------- tools ---------- */
+const TOOLS = [
+  {id:"match", opts:""},
+  {id:"letter", opts:`<label class="field">Style<select id="optStyle">${Object.keys(PROMPTS.letter_styles).map(s=>`<option value="${s}">${s[0].toUpperCase()+s.slice(1)}</option>`).join("")}</select></label>`},
+  {id:"tailor", opts:""},
+  {id:"outreach", opts:`<label class="field">Writing to (optional)<input type="text" id="optContact" placeholder="e.g. Priya, Engineering Manager"></label>`},
+  {id:"interview", opts:""},
+  {id:"answer", opts:`<label class="field" style="flex-basis:100%">Application question<input type="text" id="optQuestion" placeholder="Why do you want to work at this company?"></label>`}
+];
+let active = store.get("tab", "match");
+if(!TOOLS.some(t => t.id === active)) active = "match";
+const results = {};      // tool id -> {kind:"match"|"md"|"plain", data}
+let controller = null;
+
+function renderTabs(){
+  $("tabs").innerHTML = TOOLS.map(t => `<button class="tab" role="tab" id="tab-${t.id}" aria-selected="${t.id===active}" data-id="${t.id}">${esc(PROMPTS.tasks[t.id].label)}</button>`).join("");
+  $("opts").innerHTML = TOOLS.find(t => t.id === active).opts;
+  $("opts").hidden = !$("opts").innerHTML;
+  const remembered = store.get("opt:"+active, null);
+  const optEl = $("opts").querySelector("select,input");
+  if(optEl && remembered !== null) optEl.value = remembered;
+  if(optEl) optEl.addEventListener("change", () => store.set("opt:"+active, optEl.value));
+  renderOutput();
+}
+$("tabs").addEventListener("click", e => {
+  const b = e.target.closest(".tab"); if(!b) return;
+  active = b.dataset.id; store.set("tab", active); setStatus(""); renderTabs();
+});
+
+function renderOutput(){
+  const r = results[active], out = $("out");
+  out.classList.remove("plain");
+  if(!r){
+    if(active === "match" && !results._userRan){ out.innerHTML = `<div class="example-note">Example report for the example resume and posting. Replace them with yours and press Generate.</div>` + matchHTML(EXAMPLE_MATCH); return; }
+    out.innerHTML = `<p class="hint">Press <b>Generate</b> to create your ${esc(PROMPTS.tasks[active].label.toLowerCase())}.</p>`; return;
+  }
+  if(r.kind === "match") out.innerHTML = matchHTML(r.data);
+  else if(r.kind === "plain"){ out.classList.add("plain"); out.textContent = r.data; }
+  else out.innerHTML = md(r.data);
+}
+
+function matchHTML(m){
+  const s = Math.max(0, Math.min(100, parseInt(m.score) || 0));
+  const color = s >= 75 ? "var(--good)" : s >= 50 ? "var(--warn)" : "var(--bad)";
+  const C = 2*Math.PI*46;
+  const chips = (arr, cls) => (arr && arr.length) ? `<div class="chips ${cls}">${arr.map(x=>`<span>${esc(x)}</span>`).join("")}</div>` : `<p class="hint">None</p>`;
+  const list = arr => (arr && arr.length) ? `<ul>${arr.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";
+  return `<div class="match">
+    <div class="dial" role="img" aria-label="Match score ${s} out of 100"><svg viewBox="0 0 108 108"><circle cx="54" cy="54" r="46" fill="none" stroke="var(--line)" stroke-width="9"/><circle class="val" cx="54" cy="54" r="46" fill="none" stroke="${color}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-s/100)}"/></svg><div class="num">${s}<small>of 100</small></div></div>
+    <div style="min-width:0"><h3 style="font-size:1.05rem">${esc([m.role, m.company].filter(Boolean).join(" · ") || "Match report")}</h3><p style="margin:4px 0 0">${esc(m.verdict||"")}</p></div>
+  </div>
+  <h3>Requirements you meet</h3>${chips(m.matched_skills,"good")}
+  <h3>Requirements not shown on your resume</h3>${chips(m.missing_skills,"bad")}
+  <h3>Keywords to add (truthfully)</h3>${chips(m.keywords_to_add,"kw")}
+  ${m.strengths?.length ? `<h3>Lead with</h3>${list(m.strengths)}` : ""}
+  ${m.gaps?.length ? `<h3>Address honestly</h3>${list(m.gaps)}` : ""}
+  ${m.advice ? `<h3>Next step</h3><p>${esc(m.advice)}</p>` : ""}`;
+}
+
+function md(src){
+  const inline = s => esc(s).replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").replace(/(^|[^*])\*(?!\s)(.+?)\*(?!\*)/g,"$1<em>$2</em>").replace(/(^|\W)_(?!\s)(.+?)_(?=\W|$)/g,"$1<em>$2</em>").replace(/`([^`]+)`/g,"<code>$1</code>");
+  const lines = src.replace(/\r/g,"").split("\n"); let html = "", inList = false, para = [];
+  const flush = () => { if(para.length){ html += `<p>${para.map(inline).join("<br>")}</p>`; para = []; } };
+  const endList = () => { if(inList){ html += "</ul>"; inList = false; } };
+  for(const raw of lines){
+    const line = raw.trimEnd();
+    let m;
+    if(!line.trim()){ flush(); endList(); continue; }
+    if((m = line.match(/^#{1,2}\s+(.*)/))){ flush(); endList(); html += `<h2>${inline(m[1])}</h2>`; continue; }
+    if((m = line.match(/^#{3,6}\s+(.*)/))){ flush(); endList(); html += `<h3>${inline(m[1])}</h3>`; continue; }
+    if((m = line.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)/))){ flush(); if(!inList){ html += "<ul>"; inList = true; } html += `<li>${inline(m[1])}</li>`; continue; }
+    if(inList && /^\s{2,}\S/.test(raw)){ html = html.replace(/<\/li>$/, `<br>${inline(line.trim())}</li>`); continue; }
+    endList(); para.push(line);
+  }
+  flush(); endList(); return html;
+}
+
+function setStatus(msg, err){ const s = $("status"); s.textContent = msg; s.classList.toggle("err", !!err); }
+
+async function generate(){
+  const resume = $("resume").value.trim(), job = $("job").value.trim();
+  if(resume.length < 80) return setStatus("Add your resume first (paste it or upload a PDF).", true);
+  if(job.length < 80) return setStatus("Add the job posting text first.", true);
+  if(!engineReady()){ $("settingsBox").open = true; renderEngine(); return setStatus("Add an API key in AI settings below. Groq has a free tier.", true); }
+  const task = PROMPTS.tasks[active];
+  let extra = "";
+  if(active === "letter") extra = PROMPTS.letter_styles[$("optStyle").value];
+  if(active === "outreach"){ const c = $("optContact").value.trim(); extra = c ? `The recipient is: ${c}.` : ""; }
+  if(active === "answer"){ extra = $("optQuestion").value.trim(); if(!extra) return setStatus("Type the application question first.", true); }
+  const user = task.prompt.replaceAll("{extra}", extra).replaceAll("{resume}", resume.slice(0, 15000)).replaceAll("{job}", job.slice(0, 15000));
+  const toolId = active;
+  results._userRan = true;
+  controller = new AbortController();
+  $("goBtn").disabled = true; $("stopBtn").hidden = false;
+  setStatus(claudeSample ? "Asking Claude…" : "Generating…");
+  const out = $("out");
+  if(task.json) out.innerHTML = `<p class="hint">Analysing the match…</p>`;
+  else { out.classList.toggle("plain", toolId==="letter"||toolId==="answer"); out.textContent = ""; }
+  const plain = toolId === "letter" || toolId === "answer";
+  try{
+    const text = await callLLM(PROMPTS.system, user, {signal: controller.signal, onText: t => {
+      if(task.json || active !== toolId) return;
+      if(plain) out.textContent = t; else out.innerHTML = md(t);
+    }});
+    results[toolId] = task.json ? {kind:"match", data: parseJSON(text)} : {kind: plain ? "plain" : "md", data: text};
+    if(toolId === "match") store.set("lastMatch", results.match.data);
+    setStatus("Done. Review and edit before you send it.");
+  }catch(e){
+    if(e.name === "AbortError" || e.code === "cancelled") setStatus("Stopped.");
+    else setStatus(friendly(e), true);
+  }finally{
+    controller = null; $("goBtn").disabled = false; $("stopBtn").hidden = true;
+    if(active === toolId) renderOutput();
+  }
+}
+function friendly(e){
+  const map = {not_granted:"Claude access wasn't allowed for this page. You can allow it from the page's permissions menu.",
+    rate_limited:"You've hit a usage limit. Wait a bit and try again.", prompt_too_large:"The resume or posting is too long. Trim it and retry.",
+    refused:"Claude declined this request. Try rewording the inputs.", session_expired:"Your session expired. Reload the page and sign in."};
+  if(e && e.code && map[e.code]) return map[e.code];
+  if(e instanceof TypeError && /fetch/i.test(e.message)) return "Couldn't reach the AI provider. Check your connection or provider settings.";
+  return (e && e.message) || "Something went wrong. Try again.";
+}
+$("goBtn").addEventListener("click", generate);
+$("stopBtn").addEventListener("click", () => controller && controller.abort());
+
+function outputText(){
+  const r = results[active];
+  if(!r) return "";
+  if(r.kind !== "match") return r.data;
+  const m = r.data;
+  return `Match: ${m.score}/100 — ${[m.role,m.company].filter(Boolean).join(" at ")}\n${m.verdict||""}\n\nMeets: ${(m.matched_skills||[]).join(", ")}\nMissing: ${(m.missing_skills||[]).join(", ")}\nKeywords to add: ${(m.keywords_to_add||[]).join(", ")}\n\n${m.advice||""}`;
+}
+async function copyText(text, btn){
+  if(!text){ setStatus("Nothing to copy yet. Generate something first.", true); return; }
+  try{ await navigator.clipboard.writeText(text); const old = btn.textContent; btn.textContent = "Copied"; setTimeout(()=> btn.textContent = old, 1400); }
+  catch{ const r = document.createRange(); r.selectNodeContents($("out")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); setStatus("Press Ctrl+C / Cmd+C to copy the selected text."); }
+}
+$("copyBtn").addEventListener("click", e => copyText(outputText(), e.currentTarget));
+
+/* ---------- inputs ---------- */
+function bindText(id, key, example, tagId){
+  const el = $(id), saved = store.get(key, null);
+  el.value = saved ?? example;
+  const update = () => { $(id+"Count").textContent = `${el.value.length.toLocaleString()} chars`; $(tagId).hidden = el.value !== example; };
+  el.addEventListener("input", () => { store.set(key, el.value); update(); });
+  update();
+  return update;
+}
+const updResume = bindText("resume", "resume", EXAMPLE_RESUME, "resumeExample");
+const updJob = bindText("job", "job", EXAMPLE_JOB, "jobExample");
+$("jobUrl").value = store.get("jobUrl", "");
+$("jobUrl").addEventListener("input", () => store.set("jobUrl", $("jobUrl").value));
+$("clearJob").addEventListener("click", () => {
+  $("job").value = ""; $("jobUrl").value = ""; store.set("job", ""); store.set("jobUrl", "");
+  for(const k of Object.keys(results)) delete results[k];
+  results._userRan = true; updJob(); renderOutput(); setStatus("Ready for the next posting."); $("job").focus();
+});
+
+function loadScript(src){ return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("Couldn't load the PDF reader.")); document.head.appendChild(s); }); }
+async function pdfText(file){
+  if(!window.pdfjsLib){
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js");
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js");
+  }
+  const pdf = await pdfjsLib.getDocument({data: new Uint8Array(await file.arrayBuffer())}).promise;
+  const pages = [];
+  for(let i = 1; i <= pdf.numPages; i++){
+    const c = await (await pdf.getPage(i)).getTextContent();
+    let last = null, line = "";
+    const out = [];
+    for(const it of c.items){ const y = it.transform[5]; if(last !== null && Math.abs(y - last) > 2){ out.push(line); line = ""; } line += it.str; last = y; if(it.hasEOL){ out.push(line); line = ""; last = null; } }
+    out.push(line); pages.push(out.map(s => s.replace(/\s+/g," ").trim()).filter(Boolean).join("\n"));
+  }
+  return pages.join("\n\n");
+}
+$("resumeFile").addEventListener("change", async e => {
+  const f = e.target.files[0]; if(!f) return;
+  setStatus(`Reading ${f.name}…`);
+  try{
+    const text = /\.pdf$/i.test(f.name) || f.type === "application/pdf" ? await pdfText(f) : await f.text();
+    if(text.trim().length < 50) throw new Error("No text found in that file. If it's a scanned PDF, paste your resume text instead.");
+    $("resume").value = text.trim(); store.set("resume", $("resume").value); updResume();
+    setStatus(`Loaded ${f.name}. Check the text looks right.`);
+  }catch(err){ setStatus(err.message, true); }
+  e.target.value = "";
+});
+
+$("fetchBtn").addEventListener("click", async () => {
+  const url = $("jobUrl").value.trim();
+  if(!/^https?:\/\//i.test(url)) return setStatus("Enter a full link starting with https://", true);
+  $("fetchBtn").disabled = true; setStatus("Fetching the posting…");
+  try{
+    const r = await fetch("https://r.jina.ai/" + url, {headers:{"X-Return-Format":"text"}});
+    if(!r.ok) throw new Error();
+    let text = (await r.text()).replace(/\n{3,}/g, "\n\n").trim();
+    if(text.length < 200) throw new Error();
+    $("job").value = text.slice(0, 20000); store.set("job", $("job").value); updJob();
+    setStatus("Fetched. Trim anything that isn't part of the posting.");
+  }catch{ setStatus("Couldn't read that page (some sites block it). Copy the posting text and paste it below.", true); }
+  finally{ $("fetchBtn").disabled = false; }
+});
+
+/* ---------- settings ---------- */
+(function initSettings(){
+  const s = store.get("settings", {provider:"groq", model:"", baseUrl:""});
+  $("provider").value = PROVIDERS[s.provider] ? s.provider : "groq";
+  $("model").value = s.model || ""; $("baseUrl").value = s.baseUrl || "";
+  const savedKey = store.get("key", "");
+  $("apiKey").value = savedKey; $("rememberKey").checked = !!savedKey;
+  const sync = () => {
+    const p = $("provider").value;
+    $("model").placeholder = PROVIDERS[p].model || "model name"; $("apiKey").placeholder = PROVIDERS[p].ph;
+    $("baseUrlField").hidden = p !== "custom";
+    store.set("settings", {provider:p, model:$("model").value.trim(), baseUrl:$("baseUrl").value.trim()});
+    if($("rememberKey").checked) store.set("key", $("apiKey").value.trim()); else store.del("key");
+    renderEngine();
+  };
+  ["provider","model","baseUrl","apiKey","rememberKey"].forEach(id => $(id).addEventListener("input", sync));
+  $("provider").addEventListener("change", sync); $("rememberKey").addEventListener("change", sync);
+  sync();
+  if(!engineReady()) $("settingsBox").open = true;
+})();
+
+/* ---------- tracker ---------- */
+const STATUSES = ["Saved","Applied","Interviewing","Offer","Rejected"];
+const STATUS_STYLE = {Saved:["var(--sunk)","var(--muted)"],Applied:["var(--accent-soft)","var(--accent)"],Interviewing:["var(--warn-soft)","var(--warn)"],Offer:["var(--good-soft)","var(--good)"],Rejected:["var(--bad-soft)","var(--bad)"]};
+let apps = store.get("apps", []);
+function renderTracker(){
+  $("trackEmpty").hidden = apps.length > 0;
+  $("trackBody").innerHTML = apps.map((a, i) => {
+    const [bg, fg] = STATUS_STYLE[a.status] || STATUS_STYLE.Saved;
+    return `<tr>
+      <td>${esc(a.company || "—")}</td><td>${esc(a.role || "—")}</td>
+      <td class="num">${a.score != null ? a.score : "—"}</td>
+      <td class="num">${esc(a.date)}</td>
+      <td><select data-i="${i}" aria-label="Status for ${esc(a.company)}" style="background:${bg};color:${fg};font-weight:600">${STATUSES.map(s => `<option ${s===a.status?"selected":""}>${s}</option>`).join("")}</select></td>
+      <td>${a.url ? `<a href="${esc(a.url)}" target="_blank" rel="noopener" style="color:var(--accent)">Open</a>` : "—"}</td>
+      <td><button class="btn small" data-del="${i}">Remove</button></td></tr>`;
+  }).join("");
+  const counts = STATUSES.map(s => [s, apps.filter(a => a.status === s).length]).filter(([, n]) => n);
+  $("trackStats").textContent = counts.map(([s, n]) => `${n} ${s.toLowerCase()}`).join(" · ");
+}
+$("trackBody").addEventListener("change", e => { const i = e.target.dataset.i; if(i != null){ apps[i].status = e.target.value; store.set("apps", apps); renderTracker(); } });
+let pendingDelete = null;
+$("trackBody").addEventListener("click", e => {
+  const b = e.target.closest("[data-del]"); if(!b) return;
+  const i = +b.dataset.del;
+  if(pendingDelete === i){ apps.splice(i, 1); pendingDelete = null; store.set("apps", apps); renderTracker(); return; }
+  pendingDelete = i; renderTracker(); const nb = $("trackBody").querySelector(`[data-del="${i}"]`); nb.textContent = "Confirm"; nb.style.color = "var(--bad)";
+});
+$("saveBtn").addEventListener("click", () => {
+  const m = results.match?.data || {};
+  const firstLine = $("job").value.trim().split("\n")[0].slice(0, 80);
+  const entry = {company: m.company || "", role: m.role || firstLine, score: results.match ? m.score : null,
+    date: new Date().toISOString().slice(0, 10), status: "Saved", url: $("jobUrl").value.trim(),
+    letter: results.letter?.data || ""};
+  apps.unshift(entry); store.set("apps", apps); renderTracker();
+  setStatus(results.match ? "Saved to your tracker." : "Saved. Tip: run the Match report first to fill in company, role and score.");
+});
+$("csvBtn").addEventListener("click", e => {
+  const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const rows = [["Company","Role","Match","Saved","Status","Link"], ...apps.map(a => [a.company, a.role, a.score ?? "", a.date, a.status, a.url])];
+  copyText(apps.length ? rows.map(r => r.map(q).join(",")).join("\n") : "", e.currentTarget);
+});
+
+/* ---------- boot ---------- */
+renderTabs(); renderTracker(); renderEngine();
+(async () => {
+  if(!window.claude || typeof window.claude.use !== "function") return;
+  try{ claudeSample = await window.claude.use("sample"); }catch{ claudeSample = null; }
+  renderEngine();
+})();
+</script>
