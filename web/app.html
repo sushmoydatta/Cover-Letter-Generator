@@ -1,211 +1,371 @@
 <title>Job Apply Helper</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="Paste a job posting and your resume. Get a match score, a tailored cover letter, resume tweaks, recruiter messages and interview prep, all grounded in your real experience.">
+<meta name="theme-color" content="#08080A">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: a two-pane desk. Left pane holds the two source documents (resume, posting); right pane is the workbench where each tool produces a draft. Tracker sits below as a ledger. */
+/* Dark Spatial Editorial (matches sushmoydatta.github.io): an architectural hairline grid frames the viewport;
+   sections are bands separated by hairlines with crosshair marks; the workbench is glass panels on obsidian. */
 :root{
-  --bg:#f4f6f8; --surface:#ffffff; --sunk:#eaeef2; --line:#d5dce3;
-  --fg:#14202b; --muted:#5a6876; --accent:#0d6e63; --accent-fg:#ffffff; --accent-soft:#d9efeb;
-  --good:#1f7a3a; --warn:#a15c00; --bad:#b3261e; --good-soft:#e1f2e6; --warn-soft:#fbeed9; --bad-soft:#f9e0de;
-  --display:"Bricolage Grotesque","Space Grotesk",system-ui,sans-serif;
+  --bg:#08080a; --surface:rgba(255,255,255,.03); --sunk:rgba(255,255,255,.035); --line:rgba(255,255,255,.1); --hair:rgba(255,255,255,.07);
+  --fg:#f4f4f5; --muted:#a1a1aa; --faint:rgba(255,255,255,.42);
+  --accent:#00f0ff; --accent-fg:#08080a; --accent-soft:rgba(0,240,255,.1);
+  --good:#5eead4; --warn:#fbbf24; --bad:#fb7185;
+  --good-soft:rgba(94,234,212,.1); --warn-soft:rgba(251,191,36,.1); --bad-soft:rgba(251,113,133,.1);
+  --serif:"Instrument Serif","Times New Roman",serif;
   --body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
-  --r:10px;
+  --gut:max(20px,env(safe-area-inset-left,0px));
+  color-scheme:dark;
 }
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0f161c; --surface:#17212a; --sunk:#111a21; --line:#2a3946;
-  --fg:#e4ebf0; --muted:#93a3b1; --accent:#4cc2b0; --accent-fg:#06201c; --accent-soft:#163a35;
-  --good:#6fd08c; --warn:#f0b257; --bad:#ff8a80; --good-soft:#173525; --warn-soft:#3a2b14; --bad-soft:#3d1d1b;
-  color-scheme:dark}}
-:root[data-theme="dark"]{
-  --bg:#0f161c; --surface:#17212a; --sunk:#111a21; --line:#2a3946;
-  --fg:#e4ebf0; --muted:#93a3b1; --accent:#4cc2b0; --accent-fg:#06201c; --accent-soft:#163a35;
-  --good:#6fd08c; --warn:#f0b257; --bad:#ff8a80; --good-soft:#173525; --warn-soft:#3a2b14; --bad-soft:#3d1d1b;
-  color-scheme:dark}
 *{box-sizing:border-box}
-html{background:var(--bg)}
-body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55;
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
-.wrap{max-width:1240px;margin:0 auto}
-h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.2}
+html{background:var(--bg);scroll-behavior:smooth;scroll-padding-top:80px}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:clip;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0}
+::selection{background:var(--accent);color:var(--accent-fg)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 button,input,select,textarea{font:inherit;color:inherit}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+a{color:var(--accent)}
+h1,h2,h3{margin:0;font-weight:400;text-wrap:balance}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
 
-header.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding-block:22px 18px}
-.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
-.brand h1{font-size:1.65rem;font-weight:700;letter-spacing:-.01em}
-.brand p{margin:0;color:var(--muted);font-size:.92rem}
-.engine{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 11px;font-size:.82rem;white-space:nowrap}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
-.dot.on{background:var(--good)} .dot.off{background:var(--warn)}
+/* fixed architectural grid */
+.gridframe{position:fixed;inset:0;pointer-events:none;z-index:0}
+.gridframe>div{max-width:1320px;height:100%;margin:0 auto;border-inline:1px solid var(--hair);display:grid;grid-template-columns:repeat(4,1fr)}
+.gridframe span{border-right:1px solid var(--hair)} .gridframe span:last-child{border:0}
+@media (max-width:1023px){.gridframe span{display:none}}
+main,.nav-in{position:relative;z-index:1;max-width:1320px;margin:0 auto}
 
-.grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:20px;align-items:start}
-@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
-.col{display:flex;flex-direction:column;gap:20px;min-width:0}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
-.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.panel-head h2{font-size:1.08rem;font-weight:700}
-.eyebrow{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
-.hint{color:var(--muted);font-size:.85rem;margin:0}
-.tag{font-size:.72rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:var(--warn-soft);color:var(--warn)}
-textarea,input[type=text],input[type=password],input[type=url],select{width:100%;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
-textarea{resize:vertical;min-height:180px;font-size:.88rem;line-height:1.5}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+/* nav */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:60;background:var(--bg)}
+nav.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;margin-inline:calc(-1 * max(16px,env(safe-area-inset-left,0px)));
+  background:rgba(8,8,10,.72);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid var(--hair)}
+.nav-in{display:flex;align-items:center;gap:24px;height:64px;border-inline:1px solid var(--hair);padding-inline:var(--gut)}
+.mono-mark{display:grid;place-items:center;width:32px;height:32px;border:1px solid rgba(255,255,255,.7);font-family:var(--serif);font-style:italic;font-size:18px;line-height:1}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--fg)}
+.brand b{font:500 12px var(--mono);text-transform:uppercase;letter-spacing:.16em}
+.nav-links{margin-left:auto;display:flex;gap:28px}
+.nav-links a{font:500 12px var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--muted);text-decoration:none;transition:color .15s}
+.nav-links a:hover{color:var(--fg)}
+@media (max-width:760px){.nav-links{display:none}.brand b{display:none}}
+.progress{position:absolute;left:0;bottom:-1px;height:1px;width:100%;background:var(--accent);transform-origin:left;transform:scaleX(0)}
+
+/* buttons: glass fill, crisp border, hard cyan offset shadow that depresses on click */
+.btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 20px;cursor:pointer;
+  font:500 13px var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--fg);text-decoration:none;white-space:nowrap;user-select:none;
+  background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.2);box-shadow:4px 4px 0 rgba(255,255,255,.12);
+  backdrop-filter:blur(10px);transition:transform .1s ease-out,box-shadow .1s ease-out,background-color .1s,border-color .1s}
+.btn:hover{border-color:rgba(255,255,255,.6);background:rgba(255,255,255,.06)}
+.btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 rgba(255,255,255,.12)}
+.btn.primary{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.8);box-shadow:4px 4px 0 var(--accent)}
+.btn.primary:hover{background:rgba(255,255,255,.1);box-shadow:5px 5px 0 var(--accent);transform:translate(-1px,-1px)}
+.btn.primary:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--accent)}
+.btn.small{min-height:36px;padding:6px 14px;font-size:12px}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.nav-in .btn{min-height:36px;padding:6px 16px;font-size:12px}
+.file-btn{overflow:hidden} .file-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.arrow{width:14px;height:14px;transition:transform .2s} .btn:hover .arrow{transform:translate(2px,-2px)}
+
+.tag{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.12);padding:5px 8px;font:400 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);white-space:nowrap}
+.tag.accent{border-color:rgba(0,240,255,.4);color:var(--accent)}
+.tag.warn{border-color:rgba(251,191,36,.4);color:var(--warn)}
+.ping{position:relative;width:6px;height:6px} .ping i,.ping b{position:absolute;inset:0;border-radius:50%;background:currentColor}
+.ping i{animation:ping 1.4s cubic-bezier(0,0,.2,1) infinite;opacity:.7}
+@keyframes ping{75%,100%{transform:scale(2.4);opacity:0}}
+
+/* hero */
+.hero{position:relative;overflow:hidden;padding:44px var(--gut) 0}
+.orb{position:absolute;right:-4%;top:-2%;width:min(54vw,620px);aspect-ratio:1;pointer-events:none;z-index:0;will-change:transform}
+.orb .bloom{position:absolute;inset:20%;border-radius:50%;background:rgba(0,240,255,.18);filter:blur(80px)}
+.orb .ring{position:absolute;border-radius:50%}
+.orb .glass{position:absolute;inset:8%;border-radius:50%;overflow:hidden;border:1px solid rgba(255,255,255,.1);
+  box-shadow:inset 0 0 60px rgba(255,255,255,.05),inset -30px -40px 80px rgba(0,240,255,.06),0 40px 120px rgba(0,0,0,.6)}
+.orb canvas{position:absolute;inset:0;width:100%;height:100%}
+@media (max-width:760px){.orb{width:95vw;right:-30%;top:4%;opacity:.55}}
+.hero-meta{position:relative;z-index:1;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.hero-meta .tag:last-child{margin-left:auto}
+.hero h1{position:relative;z-index:1;margin-top:44px;font-family:var(--serif);font-size:clamp(4.2rem,15vw,13.5rem);line-height:.84;letter-spacing:-.035em}
+.hero h1 .l2{display:block;padding-left:14%;font-style:italic;color:rgba(255,255,255,.9)}
+.kin{display:flex;overflow:hidden;padding-bottom:.08em}
+.kin span{display:inline-block;transform-origin:bottom left;animation:rise .9s cubic-bezier(.2,.9,.25,1.15) both}
+@keyframes rise{from{transform:translateY(105%) rotate(6deg);opacity:0}to{transform:none;opacity:1}}
+.fade{animation:fade .8s ease-out both}
+@keyframes fade{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+.hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:24px;margin-top:52px;padding-bottom:64px}
+.hero-grid .lede{grid-column:span 5} .hero-grid .cta{grid-column:7 / span 4;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start} .hero-grid dl{grid-column:span 2}
+@media (max-width:1023px){.hero-grid{grid-template-columns:minmax(0,1fr);gap:36px}.hero-grid>*{grid-column:auto!important}}
+.label{font:500 12px var(--mono);text-transform:uppercase;letter-spacing:.18em;color:var(--accent);margin:0}
+.lede p{margin:16px 0 0;max-width:46ch;font-size:clamp(1.1rem,1.6vw,1.35rem);line-height:1.4;color:rgba(244,244,245,.9)}
+.hero-grid dl{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;font:12px var(--mono);text-transform:uppercase;letter-spacing:.08em}
+@media (min-width:1024px){.hero-grid dl{grid-template-columns:1fr}}
+.hero-grid dt{color:var(--faint)} .hero-grid dd{margin:2px 0 0}
+
+/* marquee + stat band */
+.band{position:relative;border-block:1px solid var(--hair);background:rgba(8,8,10,.6);backdrop-filter:blur(4px);overflow:hidden;margin-inline:calc(-1 * var(--gut))}
+.marquee{display:flex;width:max-content;padding-block:20px;will-change:transform}
+.marquee span{display:flex;align-items:center;white-space:nowrap;padding-inline:24px;font:italic clamp(2.2rem,5vw,4.2rem)/1 var(--serif)}
+.marquee em{font:normal 14px var(--mono);color:var(--accent)}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-inline:calc(-1 * var(--gut))}
+.stats div{display:flex;flex-direction:column-reverse;padding:30px var(--gut);border-right:1px solid var(--hair)} .stats div:last-child{border:0}
+.stats dd{margin:0;font:clamp(2.3rem,4vw,3.6rem)/1 var(--serif);letter-spacing:-.01em} .stats dt{margin-top:10px;font-size:14px;color:var(--muted)}
+@media (max-width:760px){.stats{grid-template-columns:1fr 1fr}.stats div:nth-child(2){border-right:0}.stats div:nth-child(-n+2){border-bottom:1px solid var(--hair)}}
+
+/* sections */
+section.band-sec{position:relative;border-top:1px solid var(--hair);padding:88px var(--gut)}
+.cross{position:absolute;width:9px;height:9px;top:-5px;color:rgba(255,255,255,.4)} .cross.l{left:-5px} .cross.r{right:-5px}
+.sec-head{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:24px;align-items:end;margin-bottom:48px}
+.sec-head>div{grid-column:span 8} .sec-head>p{grid-column:span 4;margin:0;color:var(--muted);line-height:1.6}
+@media (max-width:1023px){.sec-head{grid-template-columns:minmax(0,1fr)}.sec-head>*{grid-column:auto!important}}
+.sec-head h2{margin-top:16px;font:clamp(2.6rem,6vw,5.2rem)/.95 var(--serif);letter-spacing:-.02em}
+.sec-head h2 i{color:rgba(255,255,255,.85)}
+
+.grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:24px;align-items:start}
+@media (max-width:960px){.grid{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:24px;min-width:0}
+.panel{position:relative;background:var(--surface);border:1px solid var(--line);padding:22px;display:flex;flex-direction:column;gap:14px;min-width:0;
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);overflow:hidden}
+.panel::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;
+  background:radial-gradient(420px circle at var(--gx,50%) var(--gy,50%),rgba(0,240,255,.07),transparent 60%)}
+.panel:hover::before{opacity:1}
+.panel>*{position:relative}
+.corner{position:absolute;width:14px;height:14px;pointer-events:none}
+.corner.tl{left:8px;top:8px;border-left:1px solid var(--accent);border-top:1px solid var(--accent)}
+.corner.br{right:8px;bottom:8px;border-right:1px solid var(--accent);border-bottom:1px solid var(--accent)}
+.panel-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.panel-head h3{font:clamp(1.7rem,2.4vw,2.1rem)/1.02 var(--serif);letter-spacing:-.01em;margin-top:6px}
+.eyebrow{font:500 11px var(--mono);text-transform:uppercase;letter-spacing:.16em;color:var(--faint)}
+.hint{color:var(--muted);font-size:.85rem;margin:0} .hint a{color:var(--accent)}
+textarea,input[type=text],input[type=password],input[type=url],select{width:100%;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:0;padding:10px 12px;transition:border-color .15s}
+textarea:focus,input:focus,select:focus{border-color:rgba(0,240,255,.5);outline:none}
+select option{background:#111114}
+textarea{resize:vertical;min-height:200px;font:13px/1.55 var(--mono);color:rgba(244,244,245,.88)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .row > input:not([type=checkbox]){flex:1 1 200px;min-width:0}
-.hint a{color:var(--accent)}
-label.field{display:flex;flex-direction:column;gap:4px;font-size:.85rem;font-weight:500;min-width:0}
-.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:500;font-size:.9rem;white-space:nowrap}
-.btn:hover{border-color:var(--accent)}
-.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:600}
-.btn.primary:hover{filter:brightness(1.07)}
-.btn.small{padding:5px 10px;font-size:.82rem}
-.btn:disabled{opacity:.55;cursor:not-allowed}
-.file-btn{position:relative;overflow:hidden}
-.file-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}
-.count{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+input[type=checkbox]{accent-color:var(--accent)}
+label.field{display:flex;flex-direction:column;gap:6px;font:500 11px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--muted);min-width:0}
+label.field input,label.field select{font:14px var(--body);text-transform:none;letter-spacing:0;color:var(--fg)}
+.count{font:11px var(--mono);color:var(--faint);text-transform:uppercase;letter-spacing:.08em}
 
-.tabs{min-width:0;display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin:-4px -4px 0;padding:0 4px;scrollbar-width:thin}
-.tab{border:0;background:none;padding:10px 12px;cursor:pointer;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;font-size:.9rem}
-.tab[aria-selected=true]{color:var(--fg);border-bottom-color:var(--accent)}
-.opts{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
-.opts > label{flex:1 1 180px}
-.out{background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:16px 18px;min-height:220px;overflow-wrap:anywhere}
-.out.plain{white-space:pre-wrap}
-.out h2{font-size:1.02rem;margin:18px 0 6px} .out h2:first-child{margin-top:0}
-.out h3{font-size:.95rem;margin:14px 0 4px}
-.out p{margin:0 0 10px} .out ul{margin:0 0 10px;padding-left:20px} .out li{margin:3px 0}
-.out em{color:var(--muted)}
-.status{font-size:.85rem;color:var(--muted);min-height:1.3em}
+.tabs{min-width:0;display:flex;gap:0;overflow-x:auto;border:1px solid var(--line);scrollbar-width:none}
+.tab{flex:1 0 auto;border:0;border-right:1px solid var(--line);background:none;padding:12px 14px;cursor:pointer;font:500 11px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--muted);white-space:nowrap;transition:color .15s,background .15s}
+.tab:last-child{border-right:0} .tab:hover{color:var(--fg)}
+.tab[aria-selected=true]{color:var(--accent-fg);background:var(--accent)}
+.opts{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end} .opts > label{flex:1 1 200px}
+.out{background:rgba(0,0,0,.35);border:1px solid var(--line);padding:20px 22px;min-height:260px;overflow-wrap:anywhere;font-size:15px}
+.out.plain{white-space:pre-wrap;line-height:1.65}
+.out h2{font:1.6rem/1.1 var(--serif);margin:22px 0 8px} .out h2:first-child{margin-top:0}
+.out h3{font:500 11px var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--accent);margin:20px 0 8px}
+.out p{margin:0 0 10px} .out ul{margin:0 0 12px;padding-left:18px} .out li{margin:4px 0} .out li::marker{color:var(--accent)}
+.out em{color:var(--muted)} .out strong{color:#fff} .out code{font-family:var(--mono);font-size:.9em}
+.status{font:12px var(--mono);letter-spacing:.04em;color:var(--muted);min-height:1.4em}
 .status.err{color:var(--bad)}
-.example-note{font-size:.8rem;color:var(--warn);font-weight:500}
+.example-note{font:11px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--warn);margin-bottom:14px}
 
-.match{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:center}
+.match{display:grid;grid-template-columns:auto minmax(0,1fr);gap:22px;align-items:center}
 @media (max-width:520px){.match{grid-template-columns:minmax(0,1fr)}}
-.dial{width:108px;height:108px;position:relative}
+.dial{width:120px;height:120px;position:relative}
 .dial svg{width:100%;height:100%;transform:rotate(-90deg)}
-.dial .num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--mono);font-size:1.6rem;line-height:1}
-.dial .num small{font-size:.68rem;color:var(--muted);margin-top:4px;font-family:var(--body)}
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
-.chips span{font-size:.8rem;padding:3px 9px;border-radius:999px}
-.chips.good span{background:var(--good-soft);color:var(--good)}
-.chips.bad span{background:var(--bad-soft);color:var(--bad)}
-.chips.kw span{background:var(--accent-soft);color:var(--accent)}
+.dial .num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font:2.6rem/1 var(--serif)}
+.dial .num small{font:10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-top:4px}
+.match h3{font:1.7rem/1.05 var(--serif)!important;text-transform:none!important;letter-spacing:-.01em!important;color:var(--fg)!important;margin:0!important}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px}
+.chips span{font:11px var(--mono);padding:5px 8px;border:1px solid}
+.chips.good span{background:var(--good-soft);color:var(--good);border-color:rgba(94,234,212,.3)}
+.chips.bad span{background:var(--bad-soft);color:var(--bad);border-color:rgba(251,113,133,.3)}
+.chips.kw span{background:var(--accent-soft);color:var(--accent);border-color:rgba(0,240,255,.3)}
+@media (prefers-reduced-motion:no-preference){.dial circle.val{transition:stroke-dashoffset .8s cubic-bezier(.2,.9,.25,1)}}
 
-details.settings{border-top:1px solid var(--line);padding-top:10px}
-details.settings summary{cursor:pointer;font-weight:600;font-size:.9rem}
-.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px}
+.engine{display:flex}
+details.settings{border-top:1px solid var(--line);padding-top:14px}
+details.settings summary{cursor:pointer;font:500 11px var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}
+details.settings summary:hover{color:var(--fg)}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:12px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted)} .dot.on{background:var(--accent);box-shadow:0 0 10px var(--accent)} .dot.off{background:var(--warn)}
 
-.ledger{overflow-x:auto;min-width:0}
-table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:640px}
-th,td{position:relative;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
-th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.ledger{overflow-x:auto;min-width:0;border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:680px}
+th,td{position:relative;text-align:left;padding:12px 14px;border-bottom:1px solid var(--hair);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+th{font:500 11px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--faint);background:rgba(255,255,255,.02)}
 td.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
-td select{padding:4px 6px;font-size:.84rem}
-.pill{display:inline-block;font-size:.78rem;padding:2px 8px;border-radius:999px;font-weight:600}
-.empty{color:var(--muted);font-size:.9rem;padding:14px 0}
-footer{color:var(--muted);font-size:.82rem;margin-top:28px;display:flex;flex-wrap:wrap;gap:6px 18px}
-footer a{color:var(--accent)}
+td select{padding:6px 8px;font:500 11px var(--mono)!important;text-transform:uppercase;letter-spacing:.08em;width:auto}
+tbody tr{transition:background .15s} tbody tr:hover{background:rgba(255,255,255,.025)}
+.empty{color:var(--muted);font-size:.95rem;padding:18px 0 0;margin:0}
+footer{position:relative;border-top:1px solid var(--hair);padding:40px var(--gut) calc(40px + env(safe-area-inset-bottom,0px));display:flex;flex-wrap:wrap;gap:12px 28px;align-items:baseline;justify-content:space-between}
+footer .big{font:clamp(2rem,4vw,3.2rem)/1 var(--serif)} footer .big i{color:var(--accent)}
+footer .meta{display:flex;gap:20px;flex-wrap:wrap;font:11px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--faint)}
+footer a{color:var(--muted);text-decoration:none} footer a:hover{color:var(--accent)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-@media (prefers-reduced-motion:no-preference){.dial circle.val{transition:stroke-dashoffset .6s ease}}
 </style>
 
-<div class="wrap">
-  <header class="top">
-    <div class="brand">
-      <h1>Job Apply Helper</h1>
-      <p>Tailor every application to the posting, using only what's on your resume.</p>
+<div class="gridframe" aria-hidden="true"><div><span></span><span></span><span></span><span></span></div></div>
+
+<nav class="top">
+  <div class="nav-in">
+    <a class="brand" href="#top"><span class="mono-mark">Ja</span><b>Job Apply Helper</b></a>
+    <div class="nav-links"><a href="#workbench">Workbench</a><a href="#tracker">Tracker</a><a href="#how">How it works</a></div>
+    <span class="engine" style="margin-left:auto"><span class="tag" id="engineChip"><span class="dot" id="engineDot"></span><span id="engineText">Checking AI…</span></span></span>
+  </div>
+  <div class="progress" id="progress"></div>
+</nav>
+
+<main>
+  <header class="hero" id="top">
+    <div class="orb" id="orb" aria-hidden="true">
+      <div class="bloom"></div>
+      <div class="ring" style="inset:-6%;border:1px solid rgba(255,255,255,.06);transform:rotateX(72deg)"></div>
+      <div class="ring" style="inset:4%;border:1px solid rgba(0,240,255,.15);transform:rotateX(72deg) rotateY(18deg)"></div>
+      <div class="glass" id="orbGlass"><canvas id="orbCanvas"></canvas></div>
     </div>
-    <div class="engine"><span class="chip" id="engineChip"><span class="dot" id="engineDot"></span><span id="engineText">Checking AI engine…</span></span></div>
+    <div class="hero-meta fade">
+      <span class="tag">Tool / 2026</span><span class="tag">Open source</span><span class="tag">No sign-up</span>
+      <span class="tag accent"><span class="ping"><i></i><b></b></span>Grounded in your resume</span>
+    </div>
+    <h1><span class="sr">Apply smarter.</span><span class="kin" aria-hidden="true" data-text="Apply"></span><span class="kin l2" aria-hidden="true" data-text="smarter." data-delay="5"></span></h1>
+    <div class="hero-grid">
+      <div class="lede fade" style="animation-delay:.7s">
+        <p class="label">Job application copilot</p>
+        <p>Paste a posting and your resume. Get a match score, a tailored cover letter, sharper bullets, recruiter messages and interview prep, all built only from what you've actually done.</p>
+      </div>
+      <div class="cta fade" style="animation-delay:.78s">
+        <a class="btn primary" href="#workbench">Start applying <svg class="arrow" viewBox="0 0 16 16" aria-hidden="true" style="transform:rotate(90deg)"><path d="M4 12 12 4M5.5 4H12v6.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></a>
+        <a class="btn" href="#tracker">Open tracker</a>
+      </div>
+      <dl class="fade" style="animation-delay:.86s">
+        <div><dt>Input</dt><dd>Resume + posting</dd></div>
+        <div><dt>Output</dt><dd>6 drafts</dd></div>
+        <div><dt>Storage</dt><dd>Your browser</dd></div>
+      </dl>
+    </div>
+    <div class="band" aria-hidden="true">
+      <svg class="cross l" viewBox="0 0 9 9"><path d="M4.5 0v9M0 4.5h9" stroke="currentColor"/></svg><svg class="cross r" viewBox="0 0 9 9"><path d="M4.5 0v9M0 4.5h9" stroke="currentColor"/></svg>
+      <div class="marquee" id="marquee"></div>
+    </div>
+    <dl class="stats">
+      <div><dt>tools in one workbench</dt><dd>06</dd></div>
+      <div><dt>to a first draft</dt><dd>~20s</dd></div>
+      <div><dt>invented claims allowed</dt><dd>0</dd></div>
+      <div><dt>servers storing your data</dt><dd>0</dd></div>
+    </dl>
   </header>
 
-  <div class="grid">
-    <div class="col">
-      <section class="panel" aria-labelledby="resumeH">
-        <div class="panel-head">
-          <div><div class="eyebrow">Step 1</div><h2 id="resumeH">Your resume</h2></div>
+  <section class="band-sec" id="workbench">
+    <svg class="cross l" viewBox="0 0 9 9" aria-hidden="true"><path d="M4.5 0v9M0 4.5h9" stroke="currentColor"/></svg><svg class="cross r" viewBox="0 0 9 9" aria-hidden="true"><path d="M4.5 0v9M0 4.5h9" stroke="currentColor"/></svg>
+    <div class="sec-head">
+      <div><p class="label">/ Workbench</p><h2>Two documents in,<br><i>six drafts</i> out.</h2></div>
+      <p>Everything stays in this browser. Your resume and the posting are sent only with the AI request, and every draft is yours to edit before it goes anywhere.</p>
+    </div>
+
+    <div class="grid">
+      <div class="col">
+        <div class="panel">
+          <span class="corner tl"></span><span class="corner br"></span>
+          <div class="panel-head">
+            <div><div class="eyebrow">Step 01</div><h3>Your resume</h3></div>
+            <div class="row">
+              <span class="tag warn" id="resumeExample">Example</span>
+              <label class="btn small file-btn">Upload PDF<input type="file" id="resumeFile" accept=".pdf,.txt,.md,text/plain,application/pdf"></label>
+            </div>
+          </div>
+          <textarea id="resume" aria-label="Resume text" spellcheck="false"></textarea>
+          <div class="row" style="justify-content:space-between"><span class="hint">Saved in this browser only.</span><span class="count" id="resumeCount"></span></div>
+        </div>
+
+        <div class="panel">
+          <span class="corner tl"></span><span class="corner br"></span>
+          <div class="panel-head">
+            <div><div class="eyebrow">Step 02</div><h3>The job posting</h3></div>
+            <span class="tag warn" id="jobExample">Example</span>
+          </div>
+          <div class="row" id="urlRow">
+            <input type="url" id="jobUrl" placeholder="https://careers.company.com/jobs/123" aria-label="Job posting URL">
+            <button class="btn small" id="fetchBtn">Fetch</button>
+          </div>
+          <p class="hint" id="urlHint">Paste the full posting text below, or fetch it from a link.</p>
+          <textarea id="job" aria-label="Job posting text" spellcheck="false"></textarea>
+          <div class="row" style="justify-content:space-between"><button class="btn small" id="clearJob">New job</button><span class="count" id="jobCount"></span></div>
+        </div>
+      </div>
+
+      <div class="col">
+        <div class="panel">
+          <span class="corner tl"></span><span class="corner br"></span>
+          <div class="panel-head"><div><div class="eyebrow">Step 03</div><h3>Generate</h3></div></div>
+          <div class="tabs" role="tablist" id="tabs"></div>
+          <div class="opts" id="opts"></div>
           <div class="row">
-            <span class="tag" id="resumeExample">Example</span>
-            <label class="btn small file-btn">Upload PDF / TXT<input type="file" id="resumeFile" accept=".pdf,.txt,.md,text/plain,application/pdf"></label>
+            <button class="btn primary" id="goBtn">Generate</button>
+            <button class="btn" id="stopBtn" hidden>Stop</button>
+            <button class="btn small" id="copyBtn">Copy</button>
+            <button class="btn small" id="saveBtn">Save to tracker</button>
           </div>
-        </div>
-        <textarea id="resume" aria-label="Resume text" spellcheck="false"></textarea>
-        <div class="row" style="justify-content:space-between"><span class="hint">Saved in this browser only. Never uploaded anywhere except the AI request.</span><span class="count" id="resumeCount"></span></div>
-      </section>
+          <div class="status" id="status" role="status" aria-live="polite"></div>
+          <div class="out" id="out"></div>
 
-      <section class="panel" aria-labelledby="jobH">
-        <div class="panel-head">
-          <div><div class="eyebrow">Step 2</div><h2 id="jobH">Job posting</h2></div>
-          <span class="tag" id="jobExample">Example</span>
+          <details class="settings" id="settingsBox">
+            <summary>AI settings</summary>
+            <p class="hint" id="settingsNote" style="margin-top:10px"></p>
+            <div class="settings-grid" id="keyFields">
+              <label class="field">Provider
+                <select id="provider">
+                  <option value="groq">Groq (free tier)</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="openrouter">OpenRouter</option>
+                  <option value="custom">Custom (OpenAI-compatible)</option>
+                </select>
+              </label>
+              <label class="field">API key <input type="password" id="apiKey" autocomplete="off" placeholder="gsk_…"></label>
+              <label class="field">Model <input type="text" id="model"></label>
+              <label class="field" id="baseUrlField" hidden>Base URL <input type="url" id="baseUrl" placeholder="https://host/v1"></label>
+            </div>
+            <label class="row hint" style="margin-top:12px" id="rememberRow"><input type="checkbox" id="rememberKey"> Remember the key in this browser</label>
+          </details>
         </div>
-        <div class="row" id="urlRow">
-          <input type="url" id="jobUrl" placeholder="https://careers.company.com/jobs/123" aria-label="Job posting URL">
-          <button class="btn" id="fetchBtn">Fetch</button>
-        </div>
-        <p class="hint" id="urlHint">Paste the full posting text below, or fetch it from a link.</p>
-        <textarea id="job" aria-label="Job posting text" spellcheck="false"></textarea>
-        <div class="row" style="justify-content:space-between"><button class="btn small" id="clearJob">Clear for a new job</button><span class="count" id="jobCount"></span></div>
-      </section>
+      </div>
     </div>
+  </section>
 
-    <div class="col">
-      <section class="panel" aria-labelledby="toolsH">
-        <div class="panel-head">
-          <div><div class="eyebrow">Step 3</div><h2 id="toolsH">Generate</h2></div>
-        </div>
-        <div class="tabs" role="tablist" id="tabs"></div>
-        <div class="opts" id="opts"></div>
-        <div class="row">
-          <button class="btn primary" id="goBtn">Generate</button>
-          <button class="btn" id="stopBtn" hidden>Stop</button>
-          <button class="btn" id="copyBtn">Copy</button>
-          <button class="btn" id="saveBtn">Save to tracker</button>
-        </div>
-        <div class="status" id="status" role="status" aria-live="polite"></div>
-        <div class="out" id="out"></div>
-
-        <details class="settings" id="settingsBox">
-          <summary>AI settings</summary>
-          <p class="hint" id="settingsNote" style="margin-top:8px"></p>
-          <div class="settings-grid" id="keyFields">
-            <label class="field">Provider
-              <select id="provider">
-                <option value="groq">Groq (free tier)</option>
-                <option value="openai">OpenAI</option>
-                <option value="openrouter">OpenRouter</option>
-                <option value="custom">Custom (OpenAI-compatible)</option>
-              </select>
-            </label>
-            <label class="field">API key <input type="password" id="apiKey" autocomplete="off" placeholder="gsk_…"></label>
-            <label class="field">Model <input type="text" id="model"></label>
-            <label class="field" id="baseUrlField" hidden>Base URL <input type="url" id="baseUrl" placeholder="https://host/v1"></label>
-          </div>
-          <label class="row hint" style="margin-top:10px" id="rememberRow"><input type="checkbox" id="rememberKey"> Remember the key in this browser</label>
-        </details>
-      </section>
-    </div>
-  </div>
-
-  <section class="panel" style="margin-top:20px" aria-labelledby="trackH">
-    <div class="panel-head">
-      <div><div class="eyebrow">Ledger</div><h2 id="trackH">Applications tracker</h2></div>
-      <div class="row"><span class="hint" id="trackStats"></span><button class="btn small" id="csvBtn">Copy as CSV</button></div>
+  <section class="band-sec" id="tracker">
+    <svg class="cross l" viewBox="0 0 9 9" aria-hidden="true"><path d="M4.5 0v9M0 4.5h9" stroke="currentColor"/></svg><svg class="cross r" viewBox="0 0 9 9" aria-hidden="true"><path d="M4.5 0v9M0 4.5h9" stroke="currentColor"/></svg>
+    <div class="sec-head">
+      <div><p class="label">/ Tracker</p><h2>Every application,<br><i>one ledger.</i></h2></div>
+      <div style="grid-column:span 4;display:flex;flex-direction:column;gap:14px;align-items:flex-start">
+        <span class="hint" id="trackStats"></span>
+        <button class="btn small" id="csvBtn">Copy as CSV</button>
+      </div>
     </div>
     <div class="ledger"><table>
       <thead><tr><th>Company</th><th>Role</th><th>Match</th><th>Saved</th><th>Status</th><th>Link</th><th><span class="sr">Actions</span></th></tr></thead>
       <tbody id="trackBody"></tbody>
     </table></div>
-    <p class="empty" id="trackEmpty">No applications yet. Generate a match report or cover letter, then press <b>Save to tracker</b>.</p>
+    <p class="empty" id="trackEmpty">No applications yet. Run a match report, then press <b>Save to tracker</b>.</p>
   </section>
 
-  <footer>
-    <span>Outputs are drafts: read and edit before sending.</span>
-    <span>Open source: <a href="https://github.com/sushmoydatta/Cover-Letter-Generator" target="_blank" rel="noopener">GitHub</a></span>
-  </footer>
-</div>
+  <section class="band-sec" id="how">
+    <svg class="cross l" viewBox="0 0 9 9" aria-hidden="true"><path d="M4.5 0v9M0 4.5h9" stroke="currentColor"/></svg><svg class="cross r" viewBox="0 0 9 9" aria-hidden="true"><path d="M4.5 0v9M0 4.5h9" stroke="currentColor"/></svg>
+    <div class="sec-head">
+      <div><p class="label">/ How it works</p><h2>No invented<br><i>experience.</i></h2></div>
+      <p>The model gets your full resume and one hard rule: use only facts that are on it. The match report also lists what your resume doesn't show, so you never overclaim.</p>
+    </div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr))">
+      <div class="panel"><div class="eyebrow">Read</div><h3 style="font:1.8rem/1.05 var(--serif)">Posting + resume</h3><p class="hint">Paste text, upload a PDF, or fetch the posting from a link.</p></div>
+      <div class="panel"><div class="eyebrow">Ground</div><h3 style="font:1.8rem/1.05 var(--serif)">Your facts only</h3><p class="hint">Every prompt forbids made-up employers, metrics, skills or degrees.</p></div>
+      <div class="panel"><div class="eyebrow">Draft</div><h3 style="font:1.8rem/1.05 var(--serif)">Six tools</h3><p class="hint">Match report, cover letter, resume tweaks, outreach, interview prep, form answers.</p></div>
+      <div class="panel"><div class="eyebrow">Track</div><h3 style="font:1.8rem/1.05 var(--serif)">Saved → Offer</h3><p class="hint">Log each application and move it through your pipeline.</p></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span class="big">Built by <i>Sushmoy Datta</i></span>
+  <span class="meta">
+    <span>Drafts: review before sending</span>
+    <a href="https://sushmoydatta.github.io" target="_blank" rel="noopener">Portfolio ↗</a>
+    <a href="https://github.com/sushmoydatta/Cover-Letter-Generator" target="_blank" rel="noopener">Source ↗</a>
+  </span>
+</footer>
 
 <script>
 const PROMPTS = /*PROMPTS*/null;
@@ -608,5 +768,85 @@ renderTabs(); renderTracker(); renderEngine();
   if(!window.claude || typeof window.claude.use !== "function") return;
   try{ claudeSample = await window.claude.use("sample"); }catch{ claudeSample = null; }
   renderEngine();
+})();
+</script>
+<script>
+/* ---------- visual layer (portfolio-style motion); purely decorative ---------- */
+(function fx(){
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // kinetic headline letters
+  document.querySelectorAll(".kin").forEach(el => {
+    const d0 = +(el.dataset.delay || 0);
+    el.innerHTML = [...el.dataset.text].map((ch, i) => `<span style="animation-delay:${(0.15 + (d0 + i) * 0.045).toFixed(3)}s">${ch === " " ? "&nbsp;" : ch}</span>`).join("");
+  });
+  // marquee: drifts, speeds up with scroll velocity, flips direction on scroll-up
+  const mq = document.getElementById("marquee");
+  const words = ["Match score", "Cover letters", "Resume tweaks", "Recruiter outreach", "Interview prep", "Form answers"];
+  const row = words.map(w => `<span>${w}&nbsp;&nbsp;<em>✦</em></span>`).join("");
+  mq.innerHTML = row + row + row + row;
+  let x = 0, dir = 1, lastY = scrollY, vel = 0, last = performance.now();
+  const prog = document.getElementById("progress");
+  // orb
+  const orb = document.getElementById("orb"), glass = document.getElementById("orbGlass"), cv = document.getElementById("orbCanvas");
+  const ctx = cv.getContext("2d");
+  const t = (1 + Math.sqrt(5)) / 2;
+  let V = [[-1,t,0],[1,t,0],[-1,-t,0],[1,-t,0],[0,-1,t],[0,1,t],[0,-1,-t],[0,1,-t],[t,0,-1],[t,0,1],[-t,0,-1],[-t,0,1]];
+  let F = [[0,11,5],[0,5,1],[0,1,7],[0,7,10],[0,10,11],[1,5,9],[5,11,4],[11,10,2],[10,7,6],[7,1,8],[3,9,4],[3,4,2],[3,2,6],[3,6,8],[3,8,9],[4,9,5],[2,4,11],[6,2,10],[8,6,7],[9,8,1]];
+  const nrm = v => { const l = Math.hypot(...v); return v.map(c => c / l); };
+  V = V.map(nrm);
+  for(let s = 0; s < 2; s++){
+    const cache = new Map(), nf = [];
+    const mid = (a, b) => { const k = a < b ? a+"-"+b : b+"-"+a; if(cache.has(k)) return cache.get(k);
+      V.push(nrm(V[a].map((c, i) => (c + V[b][i]) / 2))); cache.set(k, V.length - 1); return V.length - 1; };
+    for(const [a,b,c] of F){ const ab = mid(a,b), bc = mid(b,c), ca = mid(c,a); nf.push([a,ab,ca],[b,bc,ab],[c,ca,bc],[ab,bc,ca]); }
+    F = nf;
+  }
+  const E = new Set(); for(const [a,b,c] of F) for(const [p,q] of [[a,b],[b,c],[c,a]]) E.add(p < q ? p+"-"+q : q+"-"+p);
+  const edges = [...E].map(e => e.split("-").map(Number));
+  const hot = new Set([3,17,29,44,58,71,90,113,130,151]);
+  let mx = 0, my = 0, sx = 0, sy = 0, size = 0;
+  const resize = () => { const dpr = Math.min(devicePixelRatio || 1, 2); size = cv.clientWidth; cv.width = size * dpr; cv.height = size * dpr; ctx.setTransform(dpr,0,0,dpr,0,0); };
+  new ResizeObserver(resize).observe(cv); resize();
+  addEventListener("pointermove", e => { mx = e.clientX / innerWidth * 2 - 1; my = e.clientY / innerHeight * 2 - 1; }, {passive:true});
+  function drawOrb(time){
+    const tt = reduce ? 0.6 : time / 9000;
+    const ay = tt * Math.PI * 0.7 + sx * 0.6, ax = 0.35 + sy * 0.45;
+    const cy = Math.cos(ay), sny = Math.sin(ay), cx = Math.cos(ax), snx = Math.sin(ax), R = size * 0.36, c = size / 2;
+    const P = V.map(([x, y, z]) => { const x1 = x*cy + z*sny, z1 = -x*sny + z*cy, y1 = y*cx - z1*snx, z2 = y*snx + z1*cx, p = 2.6 / (2.6 + z2); return [c + x1*R*p, c + y1*R*p, z2]; });
+    ctx.clearRect(0, 0, size, size); ctx.lineWidth = 1;
+    for(const [a, b] of edges){ const d = (P[a][2] + P[b][2]) / 2; ctx.strokeStyle = `rgba(220,250,255,${(0.06 + (1 - (d + 1) / 2) * 0.32).toFixed(3)})`; ctx.beginPath(); ctx.moveTo(P[a][0], P[a][1]); ctx.lineTo(P[b][0], P[b][1]); ctx.stroke(); }
+    const pulse = reduce ? 0.6 : (Math.sin(time / 420) + 1) / 2;
+    P.forEach(([x, y, z], i) => { const f = 1 - (z + 1) / 2;
+      if(hot.has(i)){ ctx.fillStyle = `rgba(0,240,255,${(0.35 + f * 0.65).toFixed(3)})`; ctx.beginPath(); ctx.arc(x, y, 2.2 + pulse * 2.2 * f, 0, 7); ctx.fill(); }
+      else { ctx.fillStyle = `rgba(255,255,255,${(0.12 + f * 0.6).toFixed(3)})`; ctx.fillRect(x - 1, y - 1, 2, 2); } });
+  }
+  function frame(now){
+    const dt = Math.min(64, now - last) / 1000; last = now;
+    // scroll velocity → marquee
+    const y = scrollY; const v = (y - lastY) / Math.max(dt, 0.001); lastY = y; vel += (v - vel) * 0.1;
+    if(vel < -5) dir = -1; else if(vel > 5) dir = 1;
+    const f = Math.min(4, Math.abs(vel) / 250);
+    if(!reduce){ x += dir * -2.2 * dt * (1 + f); x = ((x % 25) - 25) % 25; mq.style.transform = `translateX(${x}%)`; }
+    const max = document.documentElement.scrollHeight - innerHeight;
+    prog.style.transform = `scaleX(${max > 0 ? Math.min(1, y / max) : 0})`;
+    // orb springs + parallax
+    sx += (mx - sx) * 0.05; sy += (my - sy) * 0.05;
+    const heroH = orb.parentElement.offsetHeight || 1, k = reduce ? 0 : Math.min(1, y / heroH);
+    if(y < heroH + 200){
+      const bob = reduce ? 0 : Math.sin(now / 1100) * 14;
+      orb.style.transform = `translate(${sx * 36}px, ${sy * 28 + bob + k * 160}px) perspective(1200px) rotateX(${-sy * 14}deg) rotateY(${sx * 14}deg)`;
+      glass.style.backgroundImage = `radial-gradient(circle at ${50 - sx * 12}% ${28 + sy * 8}%, rgba(255,255,255,.22), rgba(255,255,255,.04) 32%, rgba(0,240,255,.05) 62%, rgba(8,8,10,0) 72%)`;
+      drawOrb(now);
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  // glass panels: cyan glow follows the pointer
+  document.addEventListener("pointermove", e => {
+    const p = e.target.closest && e.target.closest(".panel"); if(!p) return;
+    const b = p.getBoundingClientRect();
+    p.style.setProperty("--gx", ((e.clientX - b.left) / b.width * 100) + "%");
+    p.style.setProperty("--gy", ((e.clientY - b.top) / b.height * 100) + "%");
+  }, {passive:true});
 })();
 </script>
