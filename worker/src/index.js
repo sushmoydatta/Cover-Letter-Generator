@@ -114,8 +114,18 @@ export default {
 
     const upstream = await callGroq(env, prompt);
     if (!upstream.ok) {
+      // Surface Groq's status and message (never the key) so problems are diagnosable from the page.
+      let detail = "";
+      try {
+        const raw = await upstream.text();
+        try { detail = JSON.parse(raw).error?.message || raw; } catch { detail = raw; }
+      } catch {}
+      detail = String(detail).replace(/\s+/g, " ").slice(0, 160);
+      console.log(`Groq error ${upstream.status}: ${detail}`);
       const status = upstream.status === 429 ? 429 : 502;
-      const msg = status === 429 ? "The service is busy right now. Please try again in a minute." : "The AI service had a problem. Please try again.";
+      const msg = status === 429
+        ? "The service is busy right now. Please try again in a minute."
+        : `The AI service had a problem (Groq ${upstream.status}${detail ? ": " + detail : ""}). Please try again.`;
       return json({ error: msg }, status, cors);
     }
     const { _ok, ...headers } = cors;

@@ -72,3 +72,12 @@ test("health and CORS preflight", async () => {
   const p = await worker.fetch(new Request("https://api.example/generate", { method: "OPTIONS", headers: { Origin: ORIGIN } }), env);
   assert.equal(p.status, 204);
 });
+
+test("reports the upstream status when Groq fails", async () => {
+  globalThis.fetch = async () => new Response(JSON.stringify({ error: { message: "Invalid API Key" } }), { status: 401 });
+  const res = await worker.fetch(req(body, ORIGIN, "4.4.4.4"), env);
+  assert.equal(res.status, 502);
+  const { error } = await res.json();
+  assert.match(error, /Groq 401: Invalid API Key/);
+  assert.ok(!error.includes("test-key"));
+});
