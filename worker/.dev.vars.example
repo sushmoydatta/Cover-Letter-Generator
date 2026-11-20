@@ -1,0 +1,2 @@
+# Copy to .dev.vars (this file is git-ignored) for `npx wrangler dev`.
+GROQ_API_KEY=your-groq-key-here

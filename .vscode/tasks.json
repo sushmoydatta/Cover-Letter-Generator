@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "Dev server (live rebuild)", "type": "shell", "command": "python scripts/dev.py", "isBackground": true, "problemMatcher": [], "group": "build" },
+    { "label": "Dev server (local Worker API)", "type": "shell", "command": "python scripts/dev.py --local-api", "isBackground": true, "problemMatcher": [] },
+    { "label": "Worker: run locally", "type": "shell", "command": "npx wrangler dev", "options": { "cwd": "${workspaceFolder}/worker" }, "isBackground": true, "problemMatcher": [] },
+    { "label": "Build web", "type": "shell", "command": "python scripts/build_web.py", "problemMatcher": [] },
+    { "label": "Test: Python", "type": "shell", "command": "python -m pytest -q", "problemMatcher": [] },
+    { "label": "Test: JavaScript", "type": "shell", "command": "node --test shared/test/ats.test.mjs shared/test/jobextract.test.mjs worker/test/worker.test.mjs", "problemMatcher": [] },
+    { "label": "Test: everything", "dependsOn": ["Test: Python", "Test: JavaScript"], "dependsOrder": "sequence", "group": { "kind": "test", "isDefault": true }, "problemMatcher": [] },
+    { "label": "Setup: install dependencies", "type": "shell", "command": "python -m pip install -e \".[dev]\" && npm install --prefix worker", "problemMatcher": [] }
+  ]
+}

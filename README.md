@@ -104,14 +104,46 @@ notebooks/exploration.ipynb   # original prototype
 - **Grounding.** The system prompt forbids invented facts. The match report and resume tweaks also list what the resume *doesn't* show, so candidates don't overclaim.
 - **No secrets in source.** Keys come from `.env` (gitignored) or the visitor's browser.
 
-## Development
+## Developing in VS Code
+
+Requirements: Git, Python 3.9+, Node 20+ (22 recommended), and VS Code.
 
 ```bash
-pip install -e ".[dev]"
-pytest -q
-node --test shared/test/ats.test.mjs shared/test/jobextract.test.mjs worker/test/worker.test.mjs
-python scripts/build_web.py && python -m http.server -d dist 8000
+git clone https://github.com/sushmoydatta/Cover-Letter-Generator.git
+cd Cover-Letter-Generator
+code .
 ```
+
+Then, in the VS Code terminal:
+
+```bash
+python -m venv .venv
+# macOS / Linux:  source .venv/bin/activate
+# Windows:        .venv\Scripts\activate
+python -m pip install -e ".[dev]"
+npm install --prefix worker
+```
+
+Run the **Python: Select Interpreter** command and pick `.venv`. VS Code will offer the recommended extensions (Claude Code, Python, EditorConfig).
+
+| What | How |
+|---|---|
+| Live dev server | `python scripts/dev.py`, then open http://localhost:8000. It rebuilds when you save anything in `web/src/`, `shared/` or `jobhelper/prompts.json`, and talks to the deployed API. |
+| Run everything locally | Terminal 1: copy `worker/.dev.vars.example` to `worker/.dev.vars` and add a Groq key, then `cd worker && npx wrangler dev`. Terminal 2: `python scripts/dev.py --local-api`. |
+| Tests | `python -m pytest -q` and `node --test shared/test/ats.test.mjs shared/test/jobextract.test.mjs worker/test/worker.test.mjs` |
+| One-click | **Terminal → Run Task** has all of the above (`Test: everything` is the default test task). |
+| Production build | `python scripts/build_web.py` writes `dist/` |
+
+Where to change what:
+
+- **Look and layout:** `web/src/base.css`, `web/src/layout.css`, `web/src/body.html`
+- **Behaviour:** `web/src/js/01-core.js` ... `08-boot.js` (joined in order)
+- **Scoring rules and skills:** `shared/ats.js`
+- **Job reading (title, description only):** `shared/jobextract.js`
+- **Prompts for the AI tools:** `jobhelper/prompts.json`
+- **Backend:** `worker/src/index.js`
+
+Pushing to `main` deploys the site and the Worker automatically (see the workflows in `.github/workflows/`). Secrets never go in the repo.
 
 ## License
 
